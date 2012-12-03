@@ -1,0 +1,4 @@
+metapopulacja
+=============
+
+Program do magisterki.
