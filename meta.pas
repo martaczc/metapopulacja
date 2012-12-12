@@ -1,4 +1,6 @@
 //Kod źródłowy programu symulującego metapopulację złożoną z subpopulacji żyjących na rozłącznych płatach powierzchni – model 19d
+//BLA BLA BLA
+
 {dodać:
 -jak zgrabnie ustawić zmienną liczbę genów?
 -mutacje? sposób określania wyjściowej struktury genetycznej?
