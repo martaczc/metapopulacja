@@ -1,5 +1,4 @@
 //Kod źródłowy programu symulującego metapopulację złożoną z subpopulacji żyjących na rozłącznych płatach powierzchni – model 19d
-//BLA BLA BLA
 
 {dodać:
 -jak zgrabnie ustawić zmienną liczbę genów?
@@ -31,10 +30,10 @@ const
  ngen=5; //liczba genów (ile genów?)
  k=12; //liczba powierzchni
  aL=0;
- bL=-10;
- ar=-0.005;
- br=1;
- as=0.005;
+ bL=5;
+ ar=-0.1;
+ br=-0.386;
+ as=0.1;
  bs=-1;
  ae=0.01;
  be=-2;
