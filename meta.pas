@@ -19,13 +19,15 @@ do zrobienia:
 -sposób generowania początkowego rozkładu genów w populacjach (losowanie z "populacji zewnętrznej"?)
 -statystyki:
  -średnia liczba alleli
- -
+ -F?
+
+-model próbny, z danymi terenowymi
 }
 
 Uses Crt;
 const
- ngen=5; //liczba genów
- k=6; //liczba powierzchni
+ ngen=5; //liczba genów (ile genów?)
+ k=12; //liczba powierzchni
  aL=0;
  bL=-10;
  ar=-0.005;
