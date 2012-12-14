@@ -28,7 +28,7 @@ do zrobienia:
 Uses Crt;
 const
  ngen=5; //liczba genów (ile genów?)
- k=12; //liczba powierzchni
+ k=13; //liczba powierzchni
  aL=0;
  bL=5;
  ar=-0.1;
