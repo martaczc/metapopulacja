@@ -9,7 +9,7 @@ ZROBIONE:
 -płeć osobników
   -plec jako cecha osobnikow (w pop poczatkowej przydzielana losowo)
   -dodaje Nm, Liczm 
-  -samce0, samce1 -> tablica nr samcow
+  -samce0, samce1 -> tablica nr samcow-
 -geny
 	-na razie wartości początkowe losowe - random(10)
 	-liczba genów jako stała ngen
@@ -18,7 +18,7 @@ ZROBIONE:
 do zrobienia:
 -sposób generowania początkowego rozkładu genów w populacjach (losowanie z "populacji zewnętrznej"?)
 -statystyki:
- -średnia liczba alleli
+ -średnia liczba alleli (allelic richness)
  -
 }
 
@@ -48,16 +48,60 @@ Type stanosobnika=record
           end;
  stanpopulacji=array[1..100000] of stanosobnika;
  nrSamcow=array[1..100000] of longint;
- liczebnosc=array[1..100] of longint;
- tablica=array[1..100, 1..100] of real;
+ liczebnosc=array[1..k] of longint;
+ tablica=array[1..k, 1..k] of real;
+ GenDict=object
+          labels: array[1..1000] of real;
+          values: array[1..1000] of longint;
+          max: longint;
+          procedure add(label:real);
+          procedure clear;
+          function getValue(label:real);
+          end;
+ procedure GenDict.add(label:real)
+          var stop: boolean;
+          begin 
+           stop:=false;
+           for i:=1 to max
+           begin
+            if labels[i]=label then
+             begin
+             values[i]:=values[i]+1;
+             stop:=true;
+             break;
+             end
+           end;
+           if stop=true then
+           begin
+            labels[max+1]:=label;
+            values[max+1]:=1;
+            max:=max+1;
+           end;
+          end;
+ procedure GenDict.clear
+          begin
+           max:=0;
+          end;
+  function GenDict.getValue(label:real)
+          begin
+           val:=0;
+           for i:=1 to max 
+           begin 
+            if labels[i]=label then val:=values[i];
+           end;
+          end;
+
+
 Var i, j, l, os, pot, t, powt, ll, dc, lm, s: longint;
     N0, N, Nm, Licz, Liczm, ost, lmigr : liczebnosc;
     pr, ps, pe, suma, sum  : real; //zmienna suma nie jest uzywana
     polepow : array[1..100] of real;
     minodl,tabc : tablica;
     osob,potom,ojciec : stanosobnika;
-    POP0,POP1,POPmigr : array[1..100] of stanpopulacji;
-    samce0, samce1: array[1..100] of nrSamcow; 
+    POP0,POP1,POPmigr : array[1..k] of stanpopulacji;
+    samce0, samce1: array[1..k] of nrSamcow; 
+    allels: array[1..k,1..ngen] of longint
+    countAllel: array[1..ngen] of longint
     znak : char;
     INFO, INFO1,INFO2 : text;
     wiersz : string[100];
@@ -210,7 +254,15 @@ assign(INFO,'infodyn.txt');
     while ((t<czas)and(ll=0)) do
       begin
       t:=t+1;
-      for i:=1 to k do lmigr[i]:=0;
+
+      {wyzerowanie liczników}
+      for i:=1 to k do
+       begin 
+       lmigr[i]:=0;
+       for j:=1 to ngen allels[i,j]:=0;
+       end
+
+      {przeglądanie populacji}
       for i:=1 to k do
         begin
         Licz[i]:=0;
@@ -219,6 +271,7 @@ assign(INFO,'infodyn.txt');
         ps:=1/(1+exp(-(as*N[i]/polepow[i]+bs)));
         pe:=1/(1+exp(-(ae*N[i]/POLEPOW[i]+be)));
         os:=0;
+        countAllel=0;
         while os<N[i] do
           begin
           os:=os+1;
