@@ -40,6 +40,7 @@ const
  lpowt=1;
  pmut=0.001;
  skos=0.5; //pdb wydłużenia motywu
+ maxNAllel=1000;
 
 Type stanosobnika=record
           NRsubpop:longint;
@@ -52,16 +53,19 @@ Type stanosobnika=record
  liczebnosc=array[1..k] of longint;
  tablica=array[1..k, 1..k] of real;
  GenDict=object
-          labels: array[1..1000] of longint; //wartości alleli
-          values: array[1..1000] of longint; //liczba wystąpień allelu
+          labels: array[1..maxNAllel] of longint; //wartości alleli
+          values: array[1..maxNAllel] of longint; //liczba wystąpień allelu
           max: longint;
-          constructor init; //?
+          constructor init; 
           procedure add(lab:longint);
           procedure clear;
           function getValue(lab:longint):longint;
           end;
- constructor init; //?
+ GenDictArray=array[1..k,1..ngen] of GenDict;
+ constructor GenDict.init;
+          begin 
           max:=0;
+          end;
  procedure GenDict.add(lab:longint);
           var stop: boolean;
               i:longint;
@@ -98,10 +102,9 @@ Type stanosobnika=record
           getValue:=val;
           end;
 
-
 Var i, j, l, os, pot, t, powt, ll, dc, lm, s: longint;
     N0, N, Nm, Licz, Liczm, ost, lmigr : liczebnosc;
-    pr, ps, pe, suma, sum  : real; //zmienna suma nie jest uzywana
+    pr, ps, pe, sum  : real; //zmienna suma nie jest uzywana
     polepow : array[1..k] of real;
     minodl,tabc : tablica;
     osob,potom,ojciec : stanosobnika;
@@ -110,7 +113,7 @@ Var i, j, l, os, pot, t, powt, ll, dc, lm, s: longint;
     znak : char;
     INFO, INFO1,INFO2 : text;
     wiersz : string[k];
-    allels : array[1..k,1..ngen] of GenDict;
+    allels : GenDictArray;
     avgAllelRichness: array[1..k] of real;
 
 function normal(mi,sigma:real):real; //losuje liczbe z rozkladu normalnego
@@ -221,16 +224,34 @@ assign(INFO,'infodyn.txt');
  for i:=1 to k do write(INFO,'avgAllelRichness',i,' ');
   writeln(INFO);
 
+{Utworzenie tablicy allels}
+ for i:=1 to k do
+  begin
+  for j:=1 to ngen do
+   begin
+   allels[i,j].max:=0;
+   for l:=1 to maxNAllel do
+    begin
+    allels[i,j].labels[l]:=0;
+    allels[i,j].labels[l]:=0;    
+    end;
+   end;
+  end;
+
 {poczatek symulacji}
   randomize;
   for powt:=1 to lpowt do
-  //wyzerować wskaźniki!!!!
     begin
 
     {utworzenie populacji początkowej}
     for i:=1 to k do 
       begin
+      {wyzerowanie wskaźników}
+      lmigr[i]:=0;
+      avgAllelRichness[i]:=0;
+      for j:=1 to ngen do allels[i,j].clear;
       Nm[i]:=0;
+
       for os:=1 to N0[i] do
         begin
         osob.NRsubpop:=i;
@@ -259,7 +280,7 @@ assign(INFO,'infodyn.txt');
     for i:=1 to k do 
      begin
      avgAllelRichness[i]:=0;
-     for j:=1 to ngen
+     for j:=1 to ngen do
       begin
       avgAllelRichness[i]:=avgAllelRichness[i]+allels[i,j].max;
       end;
@@ -285,8 +306,8 @@ assign(INFO,'infodyn.txt');
        begin 
        lmigr[i]:=0;
        avgAllelRichness[i]:=0;
-       for j=1 to ngen do allels[i,j].clear;
-       end
+       for j:=1 to ngen do allels[i,j].clear;
+       end;
 
       {przeglądanie populacji}
       for i:=1 to k do
@@ -325,10 +346,10 @@ assign(INFO,'infodyn.txt');
             ost[i]:=ost[i]+1;
             Licz[i]:=Licz[i]+1;
             POP1[i][Licz[i]]:=potom;
-            for j=1 to ngen do
+            for j:=1 to ngen do
              begin
-             allels[i,j].add(potom.geny[j,0])
-             allels[i,j].add(potom.geny[j,1])
+             allels[i,j].add(potom.geny[j,0]);
+             allels[i,j].add(potom.geny[j,1]);
              end;
             if potom.plec=1 then
              begin
@@ -350,10 +371,10 @@ assign(INFO,'infodyn.txt');
                 begin
                 POP1[i][Licz[i]+1]:=osob;
                 Licz[i]:=Licz[i]+1;
-                for j=1 to ngen do
+                for j:=1 to ngen do
                  begin
-                 allels[i,j].add(osob.geny[j,0])
-                 allels[i,j].add(osob.geny[j,1])
+                 allels[i,j].add(osob.geny[j,0]);
+                 allels[i,j].add(osob.geny[j,1]);
                  end;
                 if osob.plec=1 then
                  begin
@@ -374,10 +395,10 @@ assign(INFO,'infodyn.txt');
         N[i]:=N[i]+1;
         POP1[i][N[i]]:=POPmigr[i][lm]; 
         osob:=POPmigr[i][lm];
-        for j=1 to ngen do
+        for j:=1 to ngen do
          begin
-         allels[i,j].add(osob.geny[j,0])
-         allels[i,j].add(osob.geny[j,1])
+         allels[i,j].add(osob.geny[j,0]);
+         allels[i,j].add(osob.geny[j,1]);
          end;
         if osob.plec=1 then
          begin
@@ -390,10 +411,7 @@ assign(INFO,'infodyn.txt');
       for i:=1 to k do 
        begin
        avgAllelRichness[i]:=0;
-       for j:=1 to ngen
-        begin
-        avgAllelRichness[i]:=avgAllelRichness[i]+allels[i,j].max;
-        end;
+       for j:=1 to ngen do avgAllelRichness[i]:=avgAllelRichness[i]+allels[i,j].max;
        avgAllelRichness[i]:=avgAllelRichness[i]/ngen;
        end;   
 
