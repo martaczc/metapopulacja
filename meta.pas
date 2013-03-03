@@ -54,6 +54,7 @@ Type stanosobnika=record
  nrSamcow=array[1..100000] of longint;
  liczebnosc=array[1..k] of longint;
  tablica=array[1..k, 1..k] of real;
+ tablicaReal=array[1..k] of real;
  GenDict=object
           labels: array[1..maxNAllel] of longint; //wartości alleli
           values: array[1..maxNAllel] of longint; //liczba wystąpień allelu
@@ -65,8 +66,7 @@ Type stanosobnika=record
           function getValue(lab:longint):longint;
           function hasLabel(lab:longint):boolean;
           end;
- GenDictArray=array[1..ngen] of GenDict;
- GenDictPop=array[1..k] of GenDictArray;
+ GenDictPop=array[1..k,1..ngen] of GenDict;
  constructor GenDict.init;
           begin 
           max:=0;
@@ -108,7 +108,7 @@ Type stanosobnika=record
              if dict.labels[i]=labels[j] then
              begin 
               values[j]:=values[j] + dict.values[i];
-              stop=true;
+              stop:=true;
               break;
              end;
             end;
@@ -147,7 +147,7 @@ Type stanosobnika=record
 Var i, j, l, os, pot, t, powt, ll, dc, lm, s: longint;
     N0, N, Nm, Licz, Liczm, ost, lmigr : liczebnosc;
     pr, ps, pe, sum  : real; //zmienna suma nie jest uzywana
-    polepow : array[1..k] of real;
+    polepow : tablicaReal;
     minodl,tabc : tablica;
     osob,potom,ojciec : stanosobnika;
     POP0,POP1,POPmigr : array[1..k] of stanpopulacji;
@@ -155,9 +155,8 @@ Var i, j, l, os, pot, t, powt, ll, dc, lm, s: longint;
     znak : char;
     INFO, INFO1,INFO2 : text;
     wiersz : string[k];
-    allels : GenDictArray;
     allelsPop : GenDictPop;
-    avgAllelRichness: array[1..k] of real;
+    avgAllelRichness,avgPrivateAllels: tablicaReal;
 
 function normal(mi,sigma:real):real; //losuje liczbe z rozkladu normalnego
 Var alfa,r1,r2:real;
@@ -207,16 +206,16 @@ function POPDOC(k,j:longint; tabc:tablica):integer; //losuje populacje docelowa
   POPDOC:=i-1;
   end;
 
-function averange(max:longint,list:Array[1:100000]):real;
- var i:longint;
- begin
-  averange:=0;
-  for i:=1 to max do averange:=averange+list[i];
-  averange:=averange/max;
- end;
+//function averange(max:longint; list: array of real):real;
+// var i:longint;
+// begin
+//  averange:=0;
+//  for i:=1 to max do averange:=averange+list[i];
+//  averange:=averange/max;
+// end;
 
-function avgUnique(dictPop:GenDictPop):Array[1..k] of longint; //count averange number of private allels
- var i,j,l,n,label:longint;
+function avgUnique(dictPop:GenDictPop): tablicaReal; //count averange number of private allels
+ var i,j,l,n,lab:longint;
   stop:boolean;
  begin
  for i:=1 to k do
@@ -226,13 +225,13 @@ function avgUnique(dictPop:GenDictPop):Array[1..k] of longint; //count averange 
     begin 
      for l:=1 to dictPop[i][j].max do 
       begin
-       label:=dictPop[i][j].labels[l];
+       lab:=dictPop[i][j].labels[l];
        stop:=false;
        n:=0;
        while ((n < k) and (stop=false)) do
         begin 
         n:=n+1;
-        if (dictPop[n][j].hasLabel(label) and n<>i) then
+        if ((dictPop[n][j].hasLabel(lab)) and (n<>i)) then
          begin
          stop:=true;
          break;
@@ -301,8 +300,9 @@ assign(INFO,'infodyn.txt');
  write(INFO,'Powtorzenie czas ');
  for i:=1 to k do write(INFO,'N',i,' ');
  for i:=1 to k do write(INFO,'Nm',i,' ');
- for i:=1 to k do write(INFO,'Zag',i,' ');
+ for i:=1 to k do write(INFO,'density',i,' ');
  for i:=1 to k do write(INFO,'avgAllelRichness',i,' ');
+ for i:=1 to k do write(INFO,'avgPrivateAllels',i,' ');
   writeln(INFO);
 
 {Utworzenie tablicy allelsPop}
@@ -492,15 +492,20 @@ assign(INFO,'infodyn.txt');
       for i:=1 to k do 
        begin
        avgAllelRichness[i]:=0;
-       for j:=1 to ngen do avgAllelRichness[i]:=avgAllelRichness[i]+allelsPop[i,j].max;
+       for j:=1 to ngen do 
+        begin
+        avgAllelRichness[i]:=avgAllelRichness[i]+allelsPop[i,j].max;
+        end;
        avgAllelRichness[i]:=avgAllelRichness[i]/ngen;
-       end;   
+       end;
+      avgPrivateAllels:=avgUnique(allelsPop);   
 
       write(INFO,powt,' ',t,' ');
       for i:=1 to k do write(INFO,N[i],' ');
       for i:=1 to k do write(INFO,Nm[i],' ');
       for i:=1 to k do write(INFO,N[i]/polepow[i]:7:5,' ');
       for i:=1 to k do write(INFO,avgAllelRichness[i]:7:5,' ');
+      for i:=1 to k do write(INFO,avgPrivateAllels[i]:7:5,' ');
       writeln(INFO);
       for i:=1 to k do for os:=1 to N[i] do POP0[i][os]:=POP1[i][os];
       for i:=1 to k do for s:=1 to Nm[i] do samce0[i][s]:=samce1[i][s];
