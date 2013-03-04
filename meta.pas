@@ -156,7 +156,7 @@ Var i, j, l, os, pot, t, powt, ll, dc, lm, s: longint;
     INFO, INFO1,INFO2 : text;
     wiersz : string[k];
     allelsPop : GenDictPop;
-    avgAllelRichness,avgPrivateAllels: tablicaReal;
+    avgAllelRichness,avgPrivateAllels,He: tablicaReal;
 
 function normal(mi,sigma:real):real; //losuje liczbe z rozkladu normalnego
 Var alfa,r1,r2:real;
@@ -244,6 +244,22 @@ function avgUnique(dictPop:GenDictPop): tablicaReal; //count averange number of 
   end;
  end;
 
+function expectHeterozigosity(dictPop:GenDictPop;N:liczebnosc): tablicaReal;
+ var i,j,l,homozigotes:longint;
+ begin
+  for i:=1 to k do  
+  begin
+   for j:=1 to ngen do
+   begin
+    for l:=1 to dictPop[i][j].max do
+    begin
+    homozigotes:=homozigotes+(dictPop[i][j].values[l]*dictPop[i][j].values[l])/(4*N[i]*N[i]);
+    end;
+   end;
+   expectHeterozigosity[i]:=(ngen-homozigotes)/ngen;
+  end;
+ end;
+
 begin
 {Wczytanie wartosci parametrow modelu: k, N0, aL, bL, ar, br, as, bs, ae, be, cc, czas, lpowt}
 {N0[i]] - liczebnosc poczatkowa i-tej populacji,
@@ -303,6 +319,7 @@ assign(INFO,'infodyn.txt');
  for i:=1 to k do write(INFO,'density',i,' ');
  for i:=1 to k do write(INFO,'avgAllelRichness',i,' ');
  for i:=1 to k do write(INFO,'avgPrivateAllels',i,' ');
+ for i:=1 to k do write(INFO,'He',i,' ');
   writeln(INFO);
 
 {Utworzenie tablicy allelsPop}
@@ -498,7 +515,8 @@ assign(INFO,'infodyn.txt');
         end;
        avgAllelRichness[i]:=avgAllelRichness[i]/ngen;
        end;
-      avgPrivateAllels:=avgUnique(allelsPop);   
+      avgPrivateAllels:=avgUnique(allelsPop); 
+      He:=expectHeterozigosity(allelsPop,N)
 
       write(INFO,powt,' ',t,' ');
       for i:=1 to k do write(INFO,N[i],' ');
@@ -506,6 +524,7 @@ assign(INFO,'infodyn.txt');
       for i:=1 to k do write(INFO,N[i]/polepow[i]:7:5,' ');
       for i:=1 to k do write(INFO,avgAllelRichness[i]:7:5,' ');
       for i:=1 to k do write(INFO,avgPrivateAllels[i]:7:5,' ');
+      for i:=1 to k do write(INFO,He[i]:7:5,' ');
       writeln(INFO);
       for i:=1 to k do for os:=1 to N[i] do POP0[i][os]:=POP1[i][os];
       for i:=1 to k do for s:=1 to Nm[i] do samce0[i][s]:=samce1[i][s];
