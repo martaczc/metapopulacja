@@ -156,7 +156,7 @@ Var i, j, l, os, pot, t, powt, ll, dc, lm, s: longint;
     INFO, INFO1,INFO2 : text;
     wiersz : string[k];
     allelsPop : GenDictPop;
-    avgAllelRichness,avgPrivateAllels,He: tablicaReal;
+    avgAllelRichness,avgPrivateAllels,He,Ho: tablicaReal;
 
 function normal(mi,sigma:real):real; //losuje liczbe z rozkladu normalnego
 Var alfa,r1,r2:real;
@@ -245,10 +245,12 @@ function avgUnique(dictPop:GenDictPop): tablicaReal; //count averange number of 
  end;
 
 function expectHeterozigosity(dictPop:GenDictPop;N:liczebnosc): tablicaReal;
- var i,j,l,homozigotes:longint;
+ var i,j,l:longint;
+  homozigotes:real;
  begin
   for i:=1 to k do  
   begin
+   homozigotes:=0;
    for j:=1 to ngen do
    begin
     for l:=1 to dictPop[i][j].max do
@@ -320,6 +322,7 @@ assign(INFO,'infodyn.txt');
  for i:=1 to k do write(INFO,'avgAllelRichness',i,' ');
  for i:=1 to k do write(INFO,'avgPrivateAllels',i,' ');
  for i:=1 to k do write(INFO,'He',i,' ');
+ for i:=1 to k do write(INFO,'Ho',i,' ');
   writeln(INFO);
 
 {Utworzenie tablicy allelsPop}
@@ -349,6 +352,7 @@ assign(INFO,'infodyn.txt');
       avgAllelRichness[i]:=0;
       for j:=1 to ngen do allelsPop[i,j].clear;
       Nm[i]:=0;
+      Ho[i]:=0;
 
       for os:=1 to N0[i] do
         begin
@@ -360,7 +364,8 @@ assign(INFO,'infodyn.txt');
          for l:=0 to 1 do
           begin
           osob.geny[j,l]:=random(10); //DO ZMIANY!!!
-          allelsPop[i,j].add(osob.geny[j,l])
+          allelsPop[i,j].add(osob.geny[j,l]);
+          if osob.geny[j,0]<>osob.geny[j,1] then Ho[i]:=Ho[i]+1;
           end;
          end;
         if osob.plec=1 then 
@@ -381,8 +386,10 @@ assign(INFO,'infodyn.txt');
      for j:=1 to ngen do
       begin
       avgAllelRichness[i]:=avgAllelRichness[i]+allelsPop[i,j].max;
+      Ho[i]:=Ho[i]/(N[i]*ngen);
       end;
-     avgAllelRichness[i]:=avgAllelRichness[i]/ngen;
+     avgPrivateAllels:=avgUnique(allelsPop); 
+     He:=expectHeterozigosity(allelsPop,N)
      end;  
 
     write(INFO,powt,' ',t,' ');
@@ -390,6 +397,9 @@ assign(INFO,'infodyn.txt');
     for i:=1 to k do write(INFO,Nm[i],' ');
     for i:=1 to k do write(INFO,N0[i]/polepow[i]:7:5,' ');
     for i:=1 to k do write(INFO,avgAllelRichness[i]:7:5,' ');
+    for i:=1 to k do write(INFO,avgPrivateAllels[i]:7:5,' ');
+    for i:=1 to k do write(INFO,He[i]:7:5,' ');
+    for i:=1 to k do write(INFO,Ho[i]:7:5,' ');
     writeln(INFO);
     ll:=0; //parametr przerywajacy symulacje, jesli ktoras z populacji jest zbyt liczna
     for i:=1 to k do if N0[i]>100000 then ll:=1;
@@ -404,6 +414,7 @@ assign(INFO,'infodyn.txt');
        begin 
        lmigr[i]:=0;
        avgAllelRichness[i]:=0;
+       Ho[i]:=0;
        for j:=1 to ngen do allelsPop[i,j].clear;
        end;
 
@@ -440,15 +451,13 @@ assign(INFO,'infodyn.txt');
                if random<skos then potom.geny[j,l]:=potom.geny[j,l]+1
                else potom.geny[j,l]:=potom.geny[j,l]-1;
                end;
+              allelsPop[i,j].add(potom.geny[j,0]);
+              allelsPop[i,j].add(potom.geny[j,1]);
+              if potom.geny[j,0]<>potom.geny[j,1] then Ho[i]:=Ho[i]+1;
              end; 
             ost[i]:=ost[i]+1;
             Licz[i]:=Licz[i]+1;
             POP1[i][Licz[i]]:=potom;
-            for j:=1 to ngen do
-             begin
-             allelsPop[i,j].add(potom.geny[j,0]);
-             allelsPop[i,j].add(potom.geny[j,1]);
-             end;
             if potom.plec=1 then
              begin
              Liczm[i]:=Liczm[i]+1;
@@ -473,6 +482,7 @@ assign(INFO,'infodyn.txt');
                  begin
                  allelsPop[i,j].add(osob.geny[j,0]);
                  allelsPop[i,j].add(osob.geny[j,1]);
+                 if osob.geny[j,0]<>osob.geny[j,1] then Ho[i]:=Ho[i]+1;
                  end;
                 if osob.plec=1 then
                  begin
@@ -497,6 +507,7 @@ assign(INFO,'infodyn.txt');
          begin
          allelsPop[i,j].add(osob.geny[j,0]);
          allelsPop[i,j].add(osob.geny[j,1]);
+         if osob.geny[j,0]<>osob.geny[j,1] then Ho[i]:=Ho[i]+1;
          end;
         if osob.plec=1 then
          begin
@@ -514,9 +525,10 @@ assign(INFO,'infodyn.txt');
         avgAllelRichness[i]:=avgAllelRichness[i]+allelsPop[i,j].max;
         end;
        avgAllelRichness[i]:=avgAllelRichness[i]/ngen;
+       Ho[i]:=Ho[i]/(N[i]*ngen);
        end;
       avgPrivateAllels:=avgUnique(allelsPop); 
-      He:=expectHeterozigosity(allelsPop,N)
+      He:=expectHeterozigosity(allelsPop,N);
 
       write(INFO,powt,' ',t,' ');
       for i:=1 to k do write(INFO,N[i],' ');
@@ -525,6 +537,7 @@ assign(INFO,'infodyn.txt');
       for i:=1 to k do write(INFO,avgAllelRichness[i]:7:5,' ');
       for i:=1 to k do write(INFO,avgPrivateAllels[i]:7:5,' ');
       for i:=1 to k do write(INFO,He[i]:7:5,' ');
+      for i:=1 to k do write(INFO,Ho[i]:7:5,' ');
       writeln(INFO);
       for i:=1 to k do for os:=1 to N[i] do POP0[i][os]:=POP1[i][os];
       for i:=1 to k do for s:=1 to Nm[i] do samce0[i][s]:=samce1[i][s];
