@@ -20,8 +20,7 @@ ZROBIONE:
 do zrobienia:
 -sposób generowania początkowego rozkładu genów w populacjach (losowanie z "populacji zewnętrznej"?)
 -statystyki:
- -średnia liczba alleli (allelic richness)?
- -allele prywatne
+ -statystyki F
 }
 
 
@@ -144,9 +143,9 @@ Type stanosobnika=record
             end;
           end;
 
-Var i, j, l, os, pot, t, powt, ll, dc, lm, s: longint;
+Var i, j, l, os, pot, t, powt, ll, dc, lm, s, Nt: longint;
     N0, N, Nm, Licz, Liczm, ost, lmigr : liczebnosc;
-    pr, ps, pe, sum  : real; //zmienna suma nie jest uzywana
+    pr, ps, pe, sum, Ht  : real; //zmienna suma nie jest uzywana
     polepow : tablicaReal;
     minodl,tabc : tablica;
     osob,potom,ojciec : stanosobnika;
@@ -156,7 +155,8 @@ Var i, j, l, os, pot, t, powt, ll, dc, lm, s: longint;
     INFO, INFO1,INFO2 : text;
     wiersz : string[k];
     allelsPop : GenDictPop;
-    avgAllelRichness,avgPrivateAllels,He,Ho: tablicaReal;
+    totalAllels: GenDic;
+    avgAllelRichness,avgPrivateAllels,He,Ho,Fis,Fst: tablicaReal;
 
 function normal(mi,sigma:real):real; //losuje liczbe z rozkladu normalnego
 Var alfa,r1,r2:real;
@@ -244,7 +244,7 @@ function avgUnique(dictPop:GenDictPop): tablicaReal; //count averange number of 
   end;
  end;
 
-function expectHeterozigosity(dictPop:GenDictPop;N:liczebnosc): tablicaReal;
+{function expectHeterozigosity(dictPop:GenDictPop;N:liczebnosc): tablicaReal;
  var i,j,l:longint;
   homozigotes:real;
  begin
@@ -259,6 +259,29 @@ function expectHeterozigosity(dictPop:GenDictPop;N:liczebnosc): tablicaReal;
     end;
    end;
    expectHeterozigosity[i]:=(ngen-homozigotes)/ngen;
+  end;
+ end;}
+
+function expectHeterozigosity(dict:GenDict;N:longint): real;
+ var l:longint;
+  homozigotes:real;
+ begin
+  homozigotes:=0;
+  for l:=1 to dict.max do
+   begin
+   homozigotes:=homozigotes+(dict.values[l]*dic.values[l])/(4*N*N);
+   end;
+  expectHeterozigosity:=1-homozigotes;
+ end;
+
+function expectPopHeterozigosity(dictPop:GenDictPop;N:liczebnosc): tablicaReal;
+ var i,j:longint;
+ begin
+  for i:=1 to k do  
+  begin
+   expectPopHeterozigosity[i]:=0;
+   for j:=1 to ngen do expectPopHeterozigosity[i]:=expectPopHeterozigosity[i]+expectHeterozigosity(dictPop[i][j],N[i]);
+   expectPopHeterozigosity[i]:=expectPopHeterozigosity[i]/ngen;
   end;
  end;
 
@@ -323,6 +346,8 @@ assign(INFO,'infodyn.txt');
  for i:=1 to k do write(INFO,'avgPrivateAllels',i,' ');
  for i:=1 to k do write(INFO,'He',i,' ');
  for i:=1 to k do write(INFO,'Ho',i,' ');
+ for i:=1 to k do write(INFO,'Fis',i,' ');
+ for i:=1 to k do write(INFO,'Fst',i,' ');
   writeln(INFO);
 
 {Utworzenie tablicy allelsPop}
@@ -339,12 +364,22 @@ assign(INFO,'infodyn.txt');
    end;
   end;
 
+{Utworzenie tablicy totalAllels}
+ totalAllels.max:=0;
+ for l:=1 to maxNAllel do
+  begin
+  totalAllels.labels[l]:=0;
+  totalAllels.labels[l]:=0;    
+  end;
+
 {poczatek symulacji}
   randomize;
   for powt:=1 to lpowt do
     begin
 
     {utworzenie populacji początkowej}
+    totalAllels.clear;
+    Nt:=0;
     for i:=1 to k do 
       begin
       {wyzerowanie wskaźników}
@@ -353,6 +388,8 @@ assign(INFO,'infodyn.txt');
       for j:=1 to ngen do allelsPop[i,j].clear;
       Nm[i]:=0;
       Ho[i]:=0;
+      Fis[i]:=0;
+      Fst[i]:=0;
 
       for os:=1 to N0[i] do
         begin
@@ -386,11 +423,21 @@ assign(INFO,'infodyn.txt');
      for j:=1 to ngen do
       begin
       avgAllelRichness[i]:=avgAllelRichness[i]+allelsPop[i,j].max;
-      Ho[i]:=Ho[i]/(N[i]*ngen);
+      totalAllels:=totalAllels.paste(allelsPop[i,j]);
       end;
-     avgPrivateAllels:=avgUnique(allelsPop); 
-     He:=expectHeterozigosity(allelsPop,N)
-     end;  
+     Ho[i]:=Ho[i]/(N[i]*ngen);
+     Nt:=Nt+N[i];
+     end;
+    avgPrivateAllels:=avgUnique(allelsPop); 
+    He:=expectPopHeterozigosity(allelsPop,N);
+    Ht:=(expectHeterozigosity(totalAllels,Nt)+(ngen-1))/ngen;
+
+    for i:=1 to k do
+     begin
+     Fis[i]:=(He[i]-Ho[i])/He[i];
+     Fst[i]:=(Ht-He[i])/Ht;
+     end;
+      
 
     write(INFO,powt,' ',t,' ');
     for i:=1 to k do write(INFO,N0[i],' ');
@@ -410,6 +457,8 @@ assign(INFO,'infodyn.txt');
       t:=t+1;
 
       {wyzerowanie liczników}
+     Nt:=0;
+     Ht:=0;
       for i:=1 to k do
        begin 
        lmigr[i]:=0;
@@ -526,9 +575,18 @@ assign(INFO,'infodyn.txt');
         end;
        avgAllelRichness[i]:=avgAllelRichness[i]/ngen;
        Ho[i]:=Ho[i]/(N[i]*ngen);
+       Nt:=Nt+N[i];
        end;
       avgPrivateAllels:=avgUnique(allelsPop); 
-      He:=expectHeterozigosity(allelsPop,N);
+      He:=expectPopHeterozigosity(allelsPop,N);
+      Ht:=(expectHeterozigosity(totalAllels,Nt)+(ngen-1))/ngen;
+
+      for i:=1 to k do
+       begin
+       Fis[i]:=(He[i]-Ho[i])/He[i];
+       Fst[i]:=(Ht-He[i])/Ht;
+       end;
+
 
       write(INFO,powt,' ',t,' ');
       for i:=1 to k do write(INFO,N[i],' ');
@@ -538,6 +596,8 @@ assign(INFO,'infodyn.txt');
       for i:=1 to k do write(INFO,avgPrivateAllels[i]:7:5,' ');
       for i:=1 to k do write(INFO,He[i]:7:5,' ');
       for i:=1 to k do write(INFO,Ho[i]:7:5,' ');
+      for i:=1 to k do write(INFO,'Fis',i,' ');
+      for i:=1 to k do write(INFO,'Fst',i,' ');
       writeln(INFO);
       for i:=1 to k do for os:=1 to N[i] do POP0[i][os]:=POP1[i][os];
       for i:=1 to k do for s:=1 to Nm[i] do samce0[i][s]:=samce1[i][s];
