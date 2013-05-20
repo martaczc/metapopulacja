@@ -25,19 +25,19 @@ do zrobienia:
 
 Uses Crt;
 const
- ngen=5; //liczba genów
- k=6; //liczba powierzchni
+ ngen=14; //liczba genów
+ k=13; //liczba powierzchni
  aL=0;
- bL=-10;
- ar=-0.005;
- br=1;
- as=0.005;
- bs=-1;
- ae=0.01;
- be=-2;
+ bL=6; //6 mlodych
+ ar=-0.1;
+ br=4.307;
+ as=0.1;
+ bs=0;
+ ae=8.205;
+ be=4.558;
  cc=0;
- czas=500;
- lpowt=1;
+ czas=5;//500;
+ lpowt=10;//100? 1000?
  pmut=0.001;
  skos=0.5; //pdb wydłużenia motywu
  maxNAllel=1000;
@@ -53,6 +53,7 @@ Type stanosobnika=record
  liczebnosc=array[1..k] of longint;
  tablica=array[1..k, 1..k] of real;
  tablicaReal=array[1..k] of real;
+ tablicaRealTime=array[1..czas,1..k] of real;
  GenDict=object
           labels: array[1..maxNAllel] of longint; //wartości alleli
           values: array[1..maxNAllel] of longint; //liczba wystąpień allelu
@@ -151,11 +152,13 @@ Var i, j, l, os, pot, t, powt, ll, dc, lm, s, Nt: longint;
     POP0,POP1,POPmigr : array[1..k] of stanpopulacji;
     samce0, samce1: array[1..k] of nrSamcow; 
     znak : char;
-    INFO, INFO1,INFO2 : text;
+    INFO, INFO1, INFO2, INFOavg : text;
     wiersz : string[k];
     allelsPop : GenDictPop;
     totalAllels: array[1..ngen] of GenDict;
     avgAllelRichness,avgPrivateAllels,He,Ho,Fis,Fst: tablicaReal;
+    avgN, avgAAR, avgAPA, avgHe, avgHo, avgFis, avgFst: tablicaRealTime;
+    winter: boolean;
 
 function normal(mi,sigma:real):real; //losuje liczbe z rozkladu normalnego
 Var alfa,r1,r2:real;
@@ -284,6 +287,10 @@ function expectPopHeterozigosity(dictPop:GenDictPop;N:liczebnosc): tablicaReal;
   end;
  end;
 
+{=========================================================================================================================
+                                            B E G I N
+==========================================================================================================================}
+
 begin
 {Wczytanie wartosci parametrow modelu: k, N0, aL, bL, ar, br, as, bs, ae, be, cc, czas, lpowt}
 {N0[i]] - liczebnosc poczatkowa i-tej populacji,
@@ -333,7 +340,8 @@ for i:=1 to k do N0[i]:=10;
       if i=j then tabc[i,j]:=0 else tabc[i,j]:=1/(exp(cc*ln(MINODL[i,j]))+1)/sum;
       end;
     end;
-{utworzenie naglowka pliku wyjsciowego}
+
+{utworzenie naglowka pliku wyjsciowego (zawierajacego wyniki poszczegolnych powtorzen)}
 assign(INFO,'infodyn.txt');
  rewrite(INFO);
  append(INFO);
@@ -347,7 +355,25 @@ assign(INFO,'infodyn.txt');
  for i:=1 to k do write(INFO,'Ho',i,' ');
  for i:=1 to k do write(INFO,'Fis',i,' ');
  for i:=1 to k do write(INFO,'Fst',i,' ');
-  writeln(INFO);
+ writeln(INFO);
+ close(INFO);
+
+{utworzenie naglowka pliku wyjsciowego (zawierajacego wyniki srednich dla powtorzen)}
+assign(INFOavg,'infodynAvg.txt');
+ rewrite(INFOavg);
+ append(INFOavg);
+ write(INFOavg,'Powtorzenie czas ');
+ for i:=1 to k do write(INFOavg,'N',i,' ');
+ for i:=1 to k do write(INFOavg,'Nm',i,' ');
+ for i:=1 to k do write(INFOavg,'density',i,' ');
+ for i:=1 to k do write(INFOavg,'avgAllelRichness',i,' ');
+ for i:=1 to k do write(INFOavg,'avgPrivateAllels',i,' ');
+ for i:=1 to k do write(INFOavg,'He',i,' ');
+ for i:=1 to k do write(INFOavg,'Ho',i,' ');
+ for i:=1 to k do write(INFOavg,'Fis',i,' ');
+ for i:=1 to k do write(INFOavg,'Fst',i,' ');
+ writeln(INFOavg);
+ close(INFOavg);
 
 {Utworzenie tablicy allelsPop}
  for i:=1 to k do
@@ -374,8 +400,27 @@ assign(INFO,'infodyn.txt');
    end;
   end;
 
-{poczatek symulacji}
+{===================================================================================================================================
+								S T A R T
+====================================================================================================================================}
   randomize;
+
+{wyzerowanie wskaźników średnich dla wszystkich powtórzeń}
+  for t:=1 to czas do
+   begin
+    for i:=1 to k do 
+     begin
+     avgN[t,i]:=0;
+     avgAAR[t,i]:=0;
+     avgAPA[t,i]:=0;
+     avgHe[t,i]:=0;
+     avgHo[t,i]:=0;
+     avgFis[t,i]:=0;
+     avgFst[t,i]:=0;
+     end;
+   end;
+
+
   for powt:=1 to lpowt do
     begin
 
@@ -461,6 +506,8 @@ assign(INFO,'infodyn.txt');
     while ((t<czas)and(ll=0)) do
       begin
       t:=t+1;
+      if ((t mod 5 = 4) or (t mod 5 = 0)) then winter:=true 
+      else winter:=false;
 
       {wyzerowanie liczników}
      Nt:=0;
@@ -486,7 +533,7 @@ assign(INFO,'infodyn.txt');
           begin
           os:=os+1;
           osob:=POP0[i][os];
-          if ((osob.plec=0) and (random<pr) and (Nm[i]>0)) then for pot:=1 to Lpotom(n[i],polepow[i],aL,bL) do
+          if ((not winter) and (osob.plec=0) and (random<pr) and (Nm[i]>0)) then for pot:=1 to Lpotom(n[i],polepow[i],aL,bL) do
             begin
             ojciec:=POP0[i][samce0[i][(random(Nm[i])+1)]];
             {if ojciec.plec=0 then //czy wybieranie samca dobrze działa?
@@ -594,10 +641,21 @@ assign(INFO,'infodyn.txt');
        Fst[i]:=(Ht-He[i])/Ht;
        end;
 
+{sumy dla powtorzen}
+      for i:=1 to k do 
+       begin
+       avgN[t,i]:=avgN[t,i] + N[i];
+       avgAAR[t,i]:=avgAAR[t,i] + avgAllelRichness[i];
+       avgAPA[t,i]:=avgAPA[t,i] + avgPrivateAllels[i];
+       avgHe[t,i]:=avgHe[t,i] + He[i];
+       avgHo[t,i]:=avgHo[t,i] + Ho[i];
+       avgFis[t,i]:=avgFis[t,i] + Fis[i];
+       avgFst[t,i]:=avgFst[t,i] + Fst[i];
+       end;
 
+      append(INFO);
       write(INFO,powt,' ',t,' ');
       for i:=1 to k do write(INFO,N[i],' ');
-      for i:=1 to k do write(INFO,Nm[i],' ');
       for i:=1 to k do write(INFO,N[i]/polepow[i]:7:5,' ');
       for i:=1 to k do write(INFO,avgAllelRichness[i]:7:5,' ');
       for i:=1 to k do write(INFO,avgPrivateAllels[i]:7:5,' ');
@@ -611,8 +669,36 @@ assign(INFO,'infodyn.txt');
       end;
     end;
   close(INFO);
-  writeln('Koniec');
-  repeat until Keypressed;
-  znak:=readkey;
+
+{srednie dla powtorzen}
+ append(INFOavg);
+ for t:=1 to czas do
+  begin
+  for i:=1 to k do 
+    begin
+    avgN[t,i]:=avgN[t,i]/lpowt;
+    avgAAR[t,i]:=avgAAR[t,i]/lpowt;
+    avgAPA[t,i]:=avgAPA[t,i]/lpowt;
+    avgHe[t,i]:=avgHe[t,i]/lpowt;
+    avgHo[t,i]:=avgHo[t,i]/lpowt;
+    avgFis[t,i]:=avgFis[t,i]/lpowt;
+    avgFst[t,i]:=avgFst[t,i]/lpowt;
+    end;
+
+  write(INFOavg,t,' ');
+  for i:=1 to k do write(INFOavg,avgN[t,i],' ');
+  for i:=1 to k do write(INFOavg,avgN[t,i]/polepow[i]:7:5,' ');
+  for i:=1 to k do write(INFOavg,avgAAR[t,i]:7:5,' ');
+  for i:=1 to k do write(INFOavg,avgAPA[t,i]:7:5,' ');
+  for i:=1 to k do write(INFOavg,avgHe[t,i]:7:5,' ');
+  for i:=1 to k do write(INFOavg,avgHo[t,i]:7:5,' ');
+  for i:=1 to k do write(INFOavg,avgFis[t,i]:7:5,' ');
+  for i:=1 to k do write(INFOavg,avgFst[t,i]:7:5,' ');
+  writeln(INFOavg);
+  end;
+  close(INFOavg);
+ writeln('Koniec');
+ repeat until Keypressed;
+ znak:=readkey;
 end.
 
