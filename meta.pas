@@ -19,7 +19,9 @@ ZROBIONE:
 
 do zrobienia:
 -sposób generowania początkowego rozkładu genów w populacjach (losowanie z "populacji zewnętrznej"?)
--statystyki:
+-problem! runtime error!
+-miara zmiennosci wskazników miedzy powtorzeniami (sd? kwantyle?)
+-mediana wskaznikow?
 }
 
 
@@ -36,7 +38,7 @@ const
  ae=8.205;
  be=4.558;
  cc=0;
- czas=5;//500;
+ czas=50;//500;
  lpowt=10;//100? 1000?
  pmut=0.001;
  skos=0.5; //pdb wydłużenia motywu
@@ -362,9 +364,9 @@ assign(INFO,'infodyn.txt');
 assign(INFOavg,'infodynAvg.txt');
  rewrite(INFOavg);
  append(INFOavg);
- write(INFOavg,'Powtorzenie czas ');
+ write(INFOavg,'czas ');
  for i:=1 to k do write(INFOavg,'N',i,' ');
- for i:=1 to k do write(INFOavg,'Nm',i,' ');
+// for i:=1 to k do write(INFOavg,'Nm',i,' ');
  for i:=1 to k do write(INFOavg,'density',i,' ');
  for i:=1 to k do write(INFOavg,'avgAllelRichness',i,' ');
  for i:=1 to k do write(INFOavg,'avgPrivateAllels',i,' ');
@@ -487,7 +489,7 @@ assign(INFOavg,'infodynAvg.txt');
      Fst[i]:=(Ht-He[i])/Ht;
      end;
       
-
+    append(INFO);
     write(INFO,powt,' ',t,' ');
     for i:=1 to k do write(INFO,N0[i],' ');
     for i:=1 to k do write(INFO,Nm[i],' ');
@@ -501,6 +503,7 @@ assign(INFOavg,'infodynAvg.txt');
     writeln(INFO);
     ll:=0; //parametr przerywajacy symulacje, jesli ktoras z populacji jest zbyt liczna
     for i:=1 to k do if N0[i]>100000 then ll:=1;
+    close(INFO);
 
     {kolejne kroki czasowe}
     while ((t<czas)and(ll=0)) do
@@ -686,7 +689,7 @@ assign(INFOavg,'infodynAvg.txt');
     end;
 
   write(INFOavg,t,' ');
-  for i:=1 to k do write(INFOavg,avgN[t,i],' ');
+  for i:=1 to k do write(INFOavg,avgN[t,i]:7:5,' ');
   for i:=1 to k do write(INFOavg,avgN[t,i]/polepow[i]:7:5,' ');
   for i:=1 to k do write(INFOavg,avgAAR[t,i]:7:5,' ');
   for i:=1 to k do write(INFOavg,avgAPA[t,i]:7:5,' ');
