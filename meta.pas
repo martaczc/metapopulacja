@@ -1,9 +1,6 @@
 //Kod źródłowy programu symulującego metapopulację złożoną z subpopulacji żyjących na rozłącznych płatach powierzchni – model 19d
 {dodać:
--jak zgrabnie ustawić zmienną liczbę genów?
--mutacje? sposób określania wyjściowej struktury genetycznej?
--metody analizy struktury genetycznej
--wiek???
+-wiek?
 
 ZROBIONE:
 -płeć osobników
@@ -18,8 +15,7 @@ ZROBIONE:
  -średnia liczba alleli (allelic richness)
 
 do zrobienia:
--sposób generowania początkowego rozkładu genów w populacjach (losowanie z "populacji zewnętrznej"?)
--problem! runtime error!
+-sposób generowania początkowego rozkładu genów w populacjach (losowanie z "populacji zewnętrznej")
 -miara zmiennosci wskazników miedzy powtorzeniami (sd? kwantyle?)
 -mediana wskaznikow?
 }
@@ -29,8 +25,8 @@ Uses Crt;
 const
  ngen=14; //liczba genów
  k=13; //liczba powierzchni
- aL=0;
- bL=6; //6 mlodych
+ k0=4; //liczba powierzchni źródłowych
+ lambda=5;//6 mlodych
  ar=-0.1;
  br=4.307;
  as=0.1;
@@ -38,7 +34,7 @@ const
  ae=8.205;
  be=4.558;
  cc=0;
- czas=50;//500;
+ czas=5;//500;
  lpowt=10;//100? 1000?
  pmut=0.001;
  skos=0.5; //pdb wydłużenia motywu
@@ -57,7 +53,7 @@ Type stanosobnika=record
  tablicaReal=array[1..k] of real;
  tablicaRealTime=array[1..czas,1..k] of real;
  GenDict=object
-          labels: array[1..maxNAllel] of longint; //wartości alleli
+          labels: array[1..maxNAllel] of longint; //liczba powtórzeń motywu w danym allelu
           values: array[1..maxNAllel] of longint; //liczba wystąpień allelu
           max: longint;
           constructor init; 
@@ -67,7 +63,20 @@ Type stanosobnika=record
           function getValue(lab:longint):longint;
           function hasLabel(lab:longint):boolean;
           end;
+ GenDict0=object
+          labels: array[1..maxNAllel] of longint; //liczba powtórzeń motywu w danym allelu
+          values: array[1..maxNAllel] of real; //częstość wystąpień allelu
+          max: longint;
+          constructor init; 
+          procedure add(lab:longint;val:real);
+          procedure check(); 
+          function getLabel(prob:real):longint;
+          end;
+
  GenDictPop=array[1..k,1..ngen] of GenDict;
+ GenDictPop0=array[1..k0,1..ngen] of GenDict0;
+
+
  constructor GenDict.init;
           begin 
           max:=0;
@@ -145,19 +154,70 @@ Type stanosobnika=record
             end;
           end;
 
-Var i, j, l, os, pot, t, powt, ll, dc, lm, s, Nt: longint;
+ constructor GenDict0.init;
+          begin 
+          max:=0;
+          end;
+ procedure GenDict0.add(lab:longint;val:real);
+          begin
+          max:=max+1;
+          labels[max]:=lab;
+          values[max]:=val;
+          end;
+ procedure GenDict0.check();
+          var i,j:longint;
+              sum:real;
+          begin
+          sum:=0;
+          for i:=1 to max do
+           begin
+           for j:=i+1 to max do
+            begin
+            if labels[i]=labels[j] then writeln('allel ',labels[j], ' wystepuje dwa razy');
+            end;
+           sum:=sum+values[i];
+           end;
+          if sum<>1 then 
+           begin
+           if ((sum - 1)>0.1) or ((sum - 1)<-0.1) then writeln('suma prawdopodobienstw wynosi ', sum:5:7, ' normuje prawdpopodobienstwa') ;
+           for i:=1 to max do values[i]:=values[i]/sum;
+           end;
+          end;
+ function GenDict0.getLabel(prob:real):longint;
+          var i:longint;
+              sum:real;
+          begin
+           sum:=0;
+           for i:=1 to max do
+            begin
+            sum:=sum+values[i];
+            if prob<sum then 
+             begin
+             getLabel:=labels[i];
+             break;
+             end;
+            end;
+           writeln('blad w losowaniu!');
+           getLabel:=0;
+          end;
+          
+
+
+Var i, j, l, os, pot, t, powt, ll, dc, lm, s, Nt, locus, allel: longint;
     N0, N, Nm, Licz, Liczm, ost, lmigr : liczebnosc;
-    pr, ps, pe, sum, Ht  : real; //zmienna suma nie jest uzywana
+    pr, ps, pe, sum, Ht,freq  : real; //zmienna suma nie jest uzywana
     polepow : tablicaReal;
     minodl,tabc : tablica;
     osob,potom,ojciec : stanosobnika;
     POP0,POP1,POPmigr : array[1..k] of stanpopulacji;
     samce0, samce1: array[1..k] of nrSamcow; 
     znak : char;
-    INFO, INFO1, INFO2, INFOavg : text;
+    INFO, INFO1, INFO2, INFOavg, INFOpop0 : text;
     wiersz : string[k];
+    word: string[3];
     allelsPop : GenDictPop;
     totalAllels: array[1..ngen] of GenDict;
+    allels0: GenDictPop0;
     avgAllelRichness,avgPrivateAllels,He,Ho,Fis,Fst: tablicaReal;
     avgN, avgAAR, avgAPA, avgHe, avgHo, avgFis, avgFst: tablicaRealTime;
     winter: boolean;
@@ -172,11 +232,10 @@ begin
   normal:=sigma*cos(alfa)*sqrt(-2*ln(sqr(r2)))+mi;
 end;
 
-Function Lpotom(n:longint;w:real;a,b:real):longint; //losuje liczbe potomkow z przesunietego o 1 rozkladu poissona o sredniej lambda
-var L:longint;
-    x,y,z,lambda,LOT:real; //"z" nie jest uzywany 
-  begin
- if a*N/w+b>50 then lambda:=a*N/w+b else lambda:=ln(1+exp(a*N/w+b));
+Function Lpotom(lambda:real):longint; //losuje liczbe potomkow z przesunietego o 1 rozkladu poissona o sredniej lambda
+ var L:longint;
+     x,y,LOT:real;
+ begin
   if lambda<50 then
     begin
     L:=0;
@@ -192,7 +251,8 @@ var L:longint;
     end
   else L:=round(normal(lambda,sqrt(lambda)));
   LPOTOM:=L+1;
-  end;
+ end;
+
 
 function POPDOC(k,j:longint; tabc:tablica):integer; //losuje populacje docelowa 
   var i:longint;
@@ -209,14 +269,6 @@ function POPDOC(k,j:longint; tabc:tablica):integer; //losuje populacje docelowa
     end;
   POPDOC:=i-1;
   end;
-
-//function averange(max:longint; list: array of real):real;
-// var i:longint;
-// begin
-//  averange:=0;
-//  for i:=1 to max do averange:=averange+list[i];
-//  averange:=averange/max;
-// end;
 
 function avgUnique(dictPop:GenDictPop): tablicaReal; //count averange number of private allels
  var i,j,l,n,lab:longint;
@@ -247,24 +299,6 @@ function avgUnique(dictPop:GenDictPop): tablicaReal; //count averange number of 
    avgUnique[i]:=avgUnique[i]/ngen;
   end;
  end;
-
-{function expectHeterozigosity(dictPop:GenDictPop;N:liczebnosc): tablicaReal;
- var i,j,l:longint;
-  homozigotes:real;
- begin
-  for i:=1 to k do  
-  begin
-   homozigotes:=0;
-   for j:=1 to ngen do
-   begin
-    for l:=1 to dictPop[i][j].max do
-    begin
-    homozigotes:=homozigotes+(dictPop[i][j].values[l]*dictPop[i][j].values[l])/(4*N[i]*N[i]);
-    end;
-   end;
-   expectHeterozigosity[i]:=(ngen-homozigotes)/ngen;
-  end;
- end;}
 
 function expectHeterozigosity(dict:GenDict;N:longint): real;
  var l:longint;
@@ -304,7 +338,33 @@ as[i,j], bs[i] - parametry sluzace do wyliczania prawdopodobienstwa
 smierci osobnika z i-tej populacji
 czas, lpowt}
 
+
+
 for i:=1 to k do N0[i]:=10;
+
+{wczytanie danych z pliku INIT.TXT}
+ for i:=1 to k0 do for j:=1 to ngen do allels0[i,j].max:=0;
+ assign(INFOpop0,'INIT.TXT');
+ reset(INFOpop0);
+ readln(INFOpop0,word);
+ while not eof(INFOpop0) do
+  begin
+  read(INFOpop0,locus,znak,allel); //TODO: przesunięte numery loci :(
+  write(locus,znak,allel);
+  for i:=1 to k0 do
+   begin
+   read(INFOpop0,znak,freq);
+   write(znak,freq:5:7);
+   allels0[i,locus].add(allel,freq);
+   end;
+  readln(INFOpop0);
+  writeln;
+ end;
+ for i:=1 to k0 do for j:=1 to ngen do allels0[i,j].check();
+ close(INFOpop0);
+   
+  
+   
 
 {wczytanie danych z pliku POLEPOW.TXT}
   assign(INFO1,'POLEPOW.TXT');
@@ -536,7 +596,7 @@ assign(INFOavg,'infodynAvg.txt');
           begin
           os:=os+1;
           osob:=POP0[i][os];
-          if ((not winter) and (osob.plec=0) and (random<pr) and (Nm[i]>0)) then for pot:=1 to Lpotom(n[i],polepow[i],aL,bL) do
+          if ((not winter) and (osob.plec=0) and (random<pr) and (Nm[i]>0)) then for pot:=1 to Lpotom(lambda) do
             begin
             ojciec:=POP0[i][samce0[i][(random(Nm[i])+1)]];
             {if ojciec.plec=0 then //czy wybieranie samca dobrze działa?
