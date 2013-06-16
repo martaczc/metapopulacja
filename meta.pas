@@ -34,7 +34,7 @@ const
  ae=8.205;
  be=4.558;
  cc=0;
- czas=5;//500;
+ czas=50;//500;
  lpowt=10;//100? 1000?
  pmut=0.001;
  skos=0.5; //pdb wydłużenia motywu
@@ -69,7 +69,7 @@ Type stanosobnika=record
           max: longint;
           constructor init; 
           procedure add(lab:longint;val:real);
-          procedure check(); 
+          procedure check(m,n:longint); 
           function getLabel(prob:real):longint;
           end;
 
@@ -164,7 +164,7 @@ Type stanosobnika=record
           labels[max]:=lab;
           values[max]:=val;
           end;
- procedure GenDict0.check();
+ procedure GenDict0.check(m,n:longint);
           var i,j:longint;
               sum:real;
           begin
@@ -173,32 +173,38 @@ Type stanosobnika=record
            begin
            for j:=i+1 to max do
             begin
-            if labels[i]=labels[j] then writeln('allel ',labels[j], ' wystepuje dwa razy');
+            if labels[i]=labels[j] then writeln('allel ',labels[j],' w locus',n, ' wystepuje dwa razy');
             end;
            sum:=sum+values[i];
            end;
           if sum<>1 then 
            begin
-           if ((sum - 1)>0.1) or ((sum - 1)<-0.1) then writeln('suma prawdopodobienstw wynosi ', sum:5:7, ' normuje prawdpopodobienstwa') ;
+           if ((sum - 1)>0.1) or ((sum - 1)<-0.1) then writeln('suma prawdopodobienstw w populacji ',m,' i w locus ', n, ' wynosi ', sum:5:7, ' normuje prawdpopodobienstwa') ;
            for i:=1 to max do values[i]:=values[i]/sum;
            end;
           end;
  function GenDict0.getLabel(prob:real):longint;
           var i:longint;
               sum:real;
+              stop:boolean;
           begin
            sum:=0;
+           stop:=false;
            for i:=1 to max do
             begin
             sum:=sum+values[i];
             if prob<sum then 
              begin
+             stop:=true;
              getLabel:=labels[i];
              break;
              end;
             end;
-           writeln('blad w losowaniu!');
-           getLabel:=0;
+           if stop=false then
+            begin
+            writeln('blad w losowaniu!');
+            getLabel:=0;
+            end;
           end;
           
 
@@ -214,7 +220,7 @@ Var i, j, l, os, pot, t, powt, ll, dc, lm, s, Nt, locus, allel: longint;
     znak : char;
     INFO, INFO1, INFO2, INFOavg, INFOpop0 : text;
     wiersz : string[k];
-    word: string[3];
+    word: string;
     allelsPop : GenDictPop;
     totalAllels: array[1..ngen] of GenDict;
     allels0: GenDictPop0;
@@ -346,10 +352,12 @@ for i:=1 to k do N0[i]:=10;
  for i:=1 to k0 do for j:=1 to ngen do allels0[i,j].max:=0;
  assign(INFOpop0,'INIT.TXT');
  reset(INFOpop0);
+ writeln('Wczytane czestosci alleli w populacjach zrodlowych');
  readln(INFOpop0,word);
+ writeln(word);
  while not eof(INFOpop0) do
   begin
-  read(INFOpop0,locus,znak,allel); //TODO: przesunięte numery loci :(
+  read(INFOpop0,locus,znak,allel); 
   write(locus,znak,allel);
   for i:=1 to k0 do
    begin
@@ -360,11 +368,8 @@ for i:=1 to k do N0[i]:=10;
   readln(INFOpop0);
   writeln;
  end;
- for i:=1 to k0 do for j:=1 to ngen do allels0[i,j].check();
- close(INFOpop0);
-   
-  
-   
+ for i:=1 to k0 do for j:=1 to ngen do allels0[i,j].check(i,j);
+ close(INFOpop0);   
 
 {wczytanie danych z pliku POLEPOW.TXT}
   assign(INFO1,'POLEPOW.TXT');
@@ -378,6 +383,7 @@ for i:=1 to k do N0[i]:=10;
 {wczytanie minimalnych odleglosci miedzy platami środowiska}
   assign(INFO2,'MINODL.TXT');
   reset(INFO2);
+  writeln('wczytane odleglosci miedzy platami srodowiska');
   readln(INFO2,wiersz);
   for i:=1 to k do
     begin
@@ -510,7 +516,7 @@ assign(INFOavg,'infodynAvg.txt');
          begin
          for l:=0 to 1 do
           begin
-          osob.geny[j,l]:=random(10); //DO ZMIANY!!!
+          osob.geny[j,l]:=allels0[1,j].getLabel(random); //DO ZMIANY!!! Na razie losuje osobnika z populacji 13.
           allelsPop[i,j].add(osob.geny[j,l]);
           end;
          if osob.geny[j,0]<>osob.geny[j,1] then Ho[i]:=Ho[i]+1;
@@ -729,6 +735,8 @@ assign(INFOavg,'infodynAvg.txt');
       writeln(INFO);
       for i:=1 to k do for os:=1 to N[i] do POP0[i][os]:=POP1[i][os];
       for i:=1 to k do for s:=1 to Nm[i] do samce0[i][s]:=samce1[i][s];
+      gotoxy(1,whereY);
+      write(pow,' ',t)
       end;
     end;
   close(INFO);
@@ -761,7 +769,7 @@ assign(INFOavg,'infodynAvg.txt');
   end;
   close(INFOavg);
  writeln('Koniec');
- repeat until Keypressed;
- znak:=readkey;
+ //repeat until Keypressed;
+ //znak:=readkey;
 end.
 
