@@ -1,50 +1,30 @@
-//Kod źródłowy programu symulującego metapopulację złożoną z subpopulacji żyjących na rozłącznych płatach powierzchni – model 19d
-{dodać:
--wiek?
-
-ZROBIONE:
--płeć osobników
-  -plec jako cecha osobnikow (w pop poczatkowej przydzielana losowo)
-  -dodaje Nm, Liczm 
-  -samce0, samce1 -> tablica nr samcow-
--geny
-	-na razie wartości początkowe losowe - random(10)
-	-liczba genów jako stała ngen
-	-pdb mutacji równe pmut - zwiększenie lub zmniejszenie długości allelu o 1 powtórzenie.
--statystyki:
- -średnia liczba alleli (allelic richness)
-
-do zrobienia:
--sposób generowania początkowego rozkładu genów w populacjach (losowanie z "populacji zewnętrznej")
--miara zmiennosci wskazników miedzy powtorzeniami (sd? kwantyle?)
--mediana wskaznikow?
-}
-
+//Kod zrodlowy programu symulujacego metapopulacje zlozona z subpopulacji zyjacych na rozlacznych platach powierzchni 
 
 Uses Crt;
 const
- ngen=14; //liczba genów
+ ngen=14; //liczba genow
+ seasons=5;
  k=13; //liczba powierzchni
- k0=4; //liczba powierzchni źródłowych
+ k0=4; //liczba powierzchni zrodlowych
  lambda=5;//6 mlodych
  ar=-0.1;
- br=4.307;
+ br=0.61371;
  as=0.1;
- bs=0;
- ae=8.205;
- be=4.558;
- cc=0;
- czas=50;//500;
- lpowt=10;//100? 1000?
+ bs=-1.59453;
+ pe=0.01;
+ cc=0.00174;
+ czas=100;//1000?
+ lpowt=1;//1000? (czas=100,lpowt=100) -> symulacja trwala 6min na moim laptopie
  pmut=0.001;
- skos=0.5; //pdb wydłużenia motywu
+ skos=0.5; //pdb wydluzenia motywu
  maxNAllel=1000;
+ Ne=20;
 
 Type stanosobnika=record
           NRsubpop:longint;
           NR:longint;
           plec: integer; //0=samica, 1=samiec
-          geny: array[1..ngen,0..1] of longint; //pierwsza cyfra -> nr. genu; 0..1 -> 0 od matki, 1 od ojca; wartość-> liczba powtórzeń motywu 
+          geny: array[1..ngen,0..1] of longint; //pierwsza cyfra -> nr. genu; 0..1 -> 0 od matki, 1 od ojca; wartosc-> liczba powtorzen motywu 
           end;
  stanpopulacji=array[1..100000] of stanosobnika;
  nrSamcow=array[1..100000] of longint;
@@ -53,8 +33,8 @@ Type stanosobnika=record
  tablicaReal=array[1..k] of real;
  tablicaRealTime=array[1..czas,1..k] of real;
  GenDict=object
-          labels: array[1..maxNAllel] of longint; //liczba powtórzeń motywu w danym allelu
-          values: array[1..maxNAllel] of longint; //liczba wystąpień allelu
+          labels: array[1..maxNAllel] of longint; //liczba powtorzen motywu w danym allelu
+          values: array[1..maxNAllel] of longint; //liczba wystapien allelu
           max: longint;
           constructor init; 
           procedure add(lab:longint);
@@ -64,8 +44,8 @@ Type stanosobnika=record
           function hasLabel(lab:longint):boolean;
           end;
  GenDict0=object
-          labels: array[1..maxNAllel] of longint; //liczba powtórzeń motywu w danym allelu
-          values: array[1..maxNAllel] of real; //częstość wystąpień allelu
+          labels: array[1..maxNAllel] of longint; //liczba powtorzen motywu w danym allelu
+          values: array[1..maxNAllel] of real; //czestosc wystapien allelu
           max: longint;
           constructor init; 
           procedure add(lab:longint;val:real);
@@ -202,23 +182,24 @@ Type stanosobnika=record
             end;
            if stop=false then
             begin
-            writeln('blad w losowaniu!');
+            writeln('blad w losowaniu! max=',max,' sum=',sum);
             getLabel:=0;
             end;
           end;
           
 
 
-Var i, j, l, os, pot, t, powt, ll, dc, lm, s, Nt, locus, allel: longint;
-    N0, N, Nm, Licz, Liczm, ost, lmigr : liczebnosc;
-    pr, ps, pe, sum, Ht,freq  : real; //zmienna suma nie jest uzywana
+Var i, j, l, os, pot, t, powt, ll, dc, lm, s, Nt, locus, allel,N0,liczba: longint;
+    N, Nm, Licz, Liczm, ost, lmigr : liczebnosc;
+    pr, ps, sum, Ht,freq: real; 
     polepow : tablicaReal;
     minodl,tabc : tablica;
     osob,potom,ojciec : stanosobnika;
     POP0,POP1,POPmigr : array[1..k] of stanpopulacji;
     samce0, samce1: array[1..k] of nrSamcow; 
+    zrodla: array[1..k] of longint;
     znak : char;
-    INFO, INFO1, INFO2, INFOavg, INFOpop0 : text;
+    INFO, INFO1, INFO2, INFOavg, initgen, initpop : text;
     wiersz : string[k];
     word: string;
     allelsPop : GenDictPop;
@@ -310,12 +291,15 @@ function expectHeterozigosity(dict:GenDict;N:longint): real;
  var l:longint;
   homozigotes:real;
  begin
-  homozigotes:=0;
-  for l:=1 to dict.max do
+  if N=0 then expectHeterozigosity:=0 else
    begin
-   homozigotes:=homozigotes+(dict.values[l]*dict.values[l])/(4*N*N);
+   homozigotes:=0;
+   for l:=1 to dict.max do
+    begin
+    homozigotes:=homozigotes+(dict.values[l]*dict.values[l])/(4*N*N);
+    end;
+   expectHeterozigosity:=1-homozigotes;
    end;
-  expectHeterozigosity:=1-homozigotes;
  end;
 
 function expectPopHeterozigosity(dictPop:GenDictPop;N:liczebnosc): tablicaReal;
@@ -334,42 +318,42 @@ function expectPopHeterozigosity(dictPop:GenDictPop;N:liczebnosc): tablicaReal;
 ==========================================================================================================================}
 
 begin
-{Wczytanie wartosci parametrow modelu: k, N0, aL, bL, ar, br, as, bs, ae, be, cc, czas, lpowt}
-{N0[i]] - liczebnosc poczatkowa i-tej populacji,
-aL[i,j], bL[i] - parametry sluzace do wyliczania sredniej jednorazowej
-liczby potomkow jednego osobnika z i-tej populacji,
-ar[i,j], br[i] - parametry sluzace do wyliczania prawdopodobienstwa
-rozrodu osobnika z i-tej populacji,
-as[i,j], bs[i] - parametry sluzace do wyliczania prawdopodobienstwa
-smierci osobnika z i-tej populacji
-czas, lpowt}
 
-
-
-for i:=1 to k do N0[i]:=10;
-
-{wczytanie danych z pliku INIT.TXT}
+{wczytanie danych z pliku INITgen.TXT}
  for i:=1 to k0 do for j:=1 to ngen do allels0[i,j].max:=0;
- assign(INFOpop0,'INIT.TXT');
- reset(INFOpop0);
- writeln('Wczytane czestosci alleli w populacjach zrodlowych');
- readln(INFOpop0,word);
- writeln(word);
- while not eof(INFOpop0) do
+ assign(initgen,'INITgen.TXT');
+ reset(initgen);
+ //writeln('Wczytane czestosci alleli w populacjach zrodlowych');
+ readln(initgen,word);
+ //writeln(word);
+ while not eof(initgen) do
   begin
-  read(INFOpop0,locus,znak,allel); 
-  write(locus,znak,allel);
+  read(initgen,locus,znak,allel); 
+  //write(locus,znak,allel);
   for i:=1 to k0 do
    begin
-   read(INFOpop0,znak,freq);
-   write(znak,freq:5:7);
+   read(initgen,znak,freq);
+   //write(znak,freq:5:7);
    allels0[i,locus].add(allel,freq);
    end;
-  readln(INFOpop0);
-  writeln;
+  readln(initgen);
+  //writeln;
  end;
  for i:=1 to k0 do for j:=1 to ngen do allels0[i,j].check(i,j);
- close(INFOpop0);   
+ close(initgen);  
+
+{wczytanie danych z pliku INITpop.TXT}
+ assign(initpop,'INITpop.TXT');
+ reset(initpop);
+ readln(initpop,word);
+ //writeln('Wczytane zrodel osobnikow w populacjach');
+ for i:=1 to k do
+  begin
+  readln(initpop,liczba,znak,zrodla[i]);
+  //writeln(liczba,znak,zrodla[i]);
+  end;
+ //writeln('koniec wczytywania');
+ close(initpop);
 
 {wczytanie danych z pliku POLEPOW.TXT}
   assign(INFO1,'POLEPOW.TXT');
@@ -377,13 +361,13 @@ for i:=1 to k do N0[i]:=10;
   readln(INFO1,wiersz);
   for i:=1 to k do readln(INFO1,znak,POLEPOW[i]);
   close(INFO1);
-  writeln('wczytane pola powierzchni platow srodowiska');
-  for i:=1 to k do writeln(i,' ',polepow[i]:7:2,' ');
+  //writeln('wczytane pola powierzchni platow srodowiska');
+  //for i:=1 to k do writeln(i,' ',polepow[i]:7:2,' ');
 
-{wczytanie minimalnych odleglosci miedzy platami środowiska}
+{wczytanie minimalnych odleglosci miedzy platami srodowiska}
   assign(INFO2,'MINODL.TXT');
   reset(INFO2);
-  writeln('wczytane odleglosci miedzy platami srodowiska');
+  //writeln('wczytane odleglosci miedzy platami srodowiska');
   readln(INFO2,wiersz);
   for i:=1 to k do
     begin
@@ -391,21 +375,21 @@ for i:=1 to k do N0[i]:=10;
     for j:=1 to k do 
      begin
      read(INFO2,MINODL[i,j]);
-     write(' ',MINODL[i,j]:7:2,' ');
+     //write(' ',MINODL[i,j]:7:2,' ');
      end;
-    writeln();
+    //writeln();
     readln(INFO2);
     end;
   close(INFO2);
 
-{utworzenie tablicy tabc[i,j] na podstawie cc i minimalnych odległosci}
+{utworzenie tablicy tabc[i,j] na podstawie cc i minimalnych odleglosci}
   for j:=1 to k do
     begin
     sum:=0;
-    for i:=1 to k do if j<>i then sum:=sum+1/(exp(cc*ln(MINODL[i,j]))+1);
+    for i:=1 to k do if j<>i then sum:=sum + exp(-cc*MINODL[i,j]); 
     for i:=1 to k do
       begin
-      if i=j then tabc[i,j]:=0 else tabc[i,j]:=1/(exp(cc*ln(MINODL[i,j]))+1)/sum;
+      if (i=j) or (cc*MINODL[i,j]>300) then tabc[i,j]:=0 else tabc[i,j]:=exp(-cc*MINODL[i,j])/sum;
       end;
     end;
 
@@ -432,7 +416,6 @@ assign(INFOavg,'infodynAvg.txt');
  append(INFOavg);
  write(INFOavg,'czas ');
  for i:=1 to k do write(INFOavg,'N',i,' ');
-// for i:=1 to k do write(INFOavg,'Nm',i,' ');
  for i:=1 to k do write(INFOavg,'density',i,' ');
  for i:=1 to k do write(INFOavg,'avgAllelRichness',i,' ');
  for i:=1 to k do write(INFOavg,'avgPrivateAllels',i,' ');
@@ -473,7 +456,7 @@ assign(INFOavg,'infodynAvg.txt');
 ====================================================================================================================================}
   randomize;
 
-{wyzerowanie wskaźników średnich dla wszystkich powtórzeń}
+{wyzerowanie wskaznikow srednich dla wszystkich powtorzen}
   for t:=1 to czas do
    begin
     for i:=1 to k do 
@@ -492,13 +475,13 @@ assign(INFOavg,'infodynAvg.txt');
   for powt:=1 to lpowt do
     begin
 
-    {utworzenie populacji początkowej}
+    {wyzerowanie wskaznikow}    
     for j:=1 to ngen do totalAllels[j].clear;
     Nt:=0;
     Ht:=0;
+    t:=0;
     for i:=1 to k do 
       begin
-      {wyzerowanie wskaźników}
       lmigr[i]:=0;
       avgAllelRichness[i]:=0;
       for j:=1 to ngen do allelsPop[i,j].clear;
@@ -507,7 +490,11 @@ assign(INFOavg,'infodynAvg.txt');
       Fis[i]:=0;
       Fst[i]:=0;
 
-      for os:=1 to N0[i] do
+      {utworzenie populacji poczatkowej}
+      if zrodla[i]=0 then N0:=0 else N0:=round(Ne*polepow[i]); 
+      //writeln(i,' ',zrodla[i],' ',N0);
+
+      for os:=1 to N0 do
         begin
         osob.NRsubpop:=i;
         osob.nr:=os;
@@ -516,7 +503,7 @@ assign(INFOavg,'infodynAvg.txt');
          begin
          for l:=0 to 1 do
           begin
-          osob.geny[j,l]:=allels0[1,j].getLabel(random); //DO ZMIANY!!! Na razie losuje osobnika z populacji 13.
+          osob.geny[j,l]:=allels0[zrodla[i],j].getLabel(random);
           allelsPop[i,j].add(osob.geny[j,l]);
           end;
          if osob.geny[j,0]<>osob.geny[j,1] then Ho[i]:=Ho[i]+1;
@@ -528,10 +515,9 @@ assign(INFOavg,'infodynAvg.txt');
          end;
         POP0[i][os]:=osob;
         end;
+       ost[i]:=N0;
+       N[i]:=N0;
       end;
-    for i:=1 to k do ost[i]:=N0[i];
-    for i:=1 to k do N[i]:=N0[i];
-    t:=0;
 
     for i:=1 to k do 
      begin
@@ -541,7 +527,7 @@ assign(INFOavg,'infodynAvg.txt');
       avgAllelRichness[i]:=avgAllelRichness[i]+allelsPop[i,j].max;
       totalAllels[j].paste(allelsPop[i,j]);
       end;
-     Ho[i]:=Ho[i]/(N[i]*ngen);
+     if N[i]<>0 then Ho[i]:=Ho[i]/(N[i]*ngen) else Ho[i]:=0;
      Nt:=Nt+N[i];
      end;
     avgPrivateAllels:=avgUnique(allelsPop); 
@@ -551,15 +537,14 @@ assign(INFOavg,'infodynAvg.txt');
 
     for i:=1 to k do
      begin
-     Fis[i]:=(He[i]-Ho[i])/He[i];
-     Fst[i]:=(Ht-He[i])/Ht;
+     if He[i]<>0 then Fis[i]:=(He[i]-Ho[i])/He[i] else Fis[i]:=0;
+     if Ht<>0 then Fst[i]:=(Ht-He[i])/Ht else Fst[i]:=0;
      end;
       
     append(INFO);
     write(INFO,powt,' ',t,' ');
-    for i:=1 to k do write(INFO,N0[i],' ');
-    for i:=1 to k do write(INFO,Nm[i],' ');
-    for i:=1 to k do write(INFO,N0[i]/polepow[i]:7:5,' ');
+    for i:=1 to k do write(INFO,N[i],' ');
+    for i:=1 to k do write(INFO,N[i]/polepow[i]:7:5,' ');
     for i:=1 to k do write(INFO,avgAllelRichness[i]:7:5,' ');
     for i:=1 to k do write(INFO,avgPrivateAllels[i]:7:5,' ');
     for i:=1 to k do write(INFO,He[i]:7:5,' ');
@@ -568,17 +553,17 @@ assign(INFOavg,'infodynAvg.txt');
     for i:=1 to k do write(INFO,Fst[i]:7:5,' ');   
     writeln(INFO);
     ll:=0; //parametr przerywajacy symulacje, jesli ktoras z populacji jest zbyt liczna
-    for i:=1 to k do if N0[i]>100000 then ll:=1;
+    for i:=1 to k do if N[i]>100000 then ll:=1;
     close(INFO);
 
     {kolejne kroki czasowe}
     while ((t<czas)and(ll=0)) do
       begin
       t:=t+1;
-      if ((t mod 5 = 4) or (t mod 5 = 0)) then winter:=true 
+      if ((t mod seasons = 4) or (t mod seasons = 0)) then winter:=true 
       else winter:=false;
 
-      {wyzerowanie liczników}
+      {wyzerowanie licznikow}
      Nt:=0;
      Ht:=0;
       for i:=1 to k do
@@ -589,14 +574,13 @@ assign(INFOavg,'infodynAvg.txt');
        for j:=1 to ngen do allelsPop[i,j].clear;
        end;
 
-      {przeglądanie populacji}
+      {przegladanie populacji}
       for i:=1 to k do
         begin
         Licz[i]:=0;
         Liczm[i]:=0;
         pr:=1/(1+exp(-(ar*N[i]/polepow[i]+br)));
         ps:=1/(1+exp(-(as*N[i]/polepow[i]+bs)));
-        pe:=1/(1+exp(-(ae*N[i]/POLEPOW[i]+be)));
         os:=0;
         while os<N[i] do
           begin
@@ -605,7 +589,7 @@ assign(INFOavg,'infodynAvg.txt');
           if ((not winter) and (osob.plec=0) and (random<pr) and (Nm[i]>0)) then for pot:=1 to Lpotom(lambda) do
             begin
             ojciec:=POP0[i][samce0[i][(random(Nm[i])+1)]];
-            {if ojciec.plec=0 then //czy wybieranie samca dobrze działa?
+            {if ojciec.plec=0 then //czy wybieranie samca dobrze dziala?
              begin
              writeln('ojciec to samica',' t=',t);
              Exit;
@@ -696,7 +680,7 @@ assign(INFOavg,'infodynAvg.txt');
         avgAllelRichness[i]:=avgAllelRichness[i]+allelsPop[i,j].max;
         end;
        avgAllelRichness[i]:=avgAllelRichness[i]/ngen;
-       Ho[i]:=Ho[i]/(N[i]*ngen);
+       if N[i]<>0 then Ho[i]:=Ho[i]/(N[i]*ngen) else Ho[i]:=0;
        Nt:=Nt+N[i];
        end;
       avgPrivateAllels:=avgUnique(allelsPop); 
@@ -706,8 +690,8 @@ assign(INFOavg,'infodynAvg.txt');
 
       for i:=1 to k do
        begin
-       Fis[i]:=(He[i]-Ho[i])/He[i];
-       Fst[i]:=(Ht-He[i])/Ht;
+       if He[i]<>0 then Fis[i]:=(He[i]-Ho[i])/He[i] else Fis[i]:=0;
+       if Ht<>0 then Fst[i]:=(Ht-He[i])/Ht else Fst[i]:=0;
        end;
 
 {sumy dla powtorzen}
@@ -736,7 +720,7 @@ assign(INFOavg,'infodynAvg.txt');
       for i:=1 to k do for os:=1 to N[i] do POP0[i][os]:=POP1[i][os];
       for i:=1 to k do for s:=1 to Nm[i] do samce0[i][s]:=samce1[i][s];
       gotoxy(1,whereY);
-      write(pow,' ',t)
+      write(powt,' ',t)
       end;
     end;
   close(INFO);
