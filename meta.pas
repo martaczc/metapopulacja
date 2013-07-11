@@ -133,7 +133,7 @@ Type stanosobnika=record
           labels[max]:=lab;
           values[max]:=val;
           end;
- procedure GenDict0.check(m,n:longint);
+ procedure GenDict0.check(m,n:longint); //Sprawdza, czy rozklad alleli jest poprawnie zdefiniowany
           var i,j:longint;
               sum:real;
           begin
@@ -142,7 +142,7 @@ Type stanosobnika=record
            begin
            for j:=i+1 to max do
             begin
-            if labels[i]=labels[j] then writeln('allel ',labels[j],' w locus',n, ' wystepuje dwa razy');
+            if labels[i]=labels[j] then writeln('allel ',labels[j],' w locus ',n, ' wystepuje dwa razy');
             end;
            sum:=sum+values[i];
            end;
@@ -198,7 +198,7 @@ Var i, j, l, os, pot, t, powt, ll, dc, lm, s, Nt, locus, allel,N0,liczba: longin
     avgN, avgAAR, avgAPA, avgHe, avgHo, avgFis, avgFst: tablicaRealTime;
     winter: boolean;
 
-function normal(mi,sigma:real):real; //losuje liczbe z rozkladu normalnego
+function normal(mi,sigma:real):real; //losuje liczbe z rozkladu normalnego: do losowania liczby potomstwa przy duzych lambda
 Var alfa,r1,r2:real;
 begin
   alfa:=2*pi*random;
@@ -230,11 +230,10 @@ Function Lpotom(lambda:real):longint; //losuje liczbe potomkow z przesunietego o
  end;
 
 
-function POPDOC(k,j:longint; tabc:tablica):integer; //losuje populacje docelowa 
+function POPDOC(j:longint; tabc:tablica):integer; //losuje populacje docelowa nie zalezy od k?
   var i:longint;
     czsum, los : real;
   begin
-  sum:=0;
   los:=random;
   czsum:=0;
   i:=1;
@@ -613,7 +612,7 @@ assign(INFOavg,'infodynAvg.txt');
               begin
               if random<pe then
                 begin
-                dc:=POPDOC(k, i, tabc);
+                dc:=POPDOC(i, tabc);
                 POPmigr[dc][lmigr[dc]+1]:=osob;
                 lmigr[dc]:=lmigr[dc]+1;
                 end
