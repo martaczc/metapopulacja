@@ -40,7 +40,6 @@ Type stanosobnika=record
           procedure add(lab:longint);
           procedure clear;
           procedure paste(dict:GenDict);
-          function getValue(lab:longint):longint;
           function hasLabel(lab:longint):boolean;
           end;
  GenDict0=object
@@ -92,7 +91,7 @@ Type stanosobnika=record
           begin
            for i:=1 to dict.max do
            begin
-            stop := false; 
+            stop:=false; 
             for j:=1 to max do
             begin
              if dict.labels[i]=labels[j] then
@@ -109,16 +108,6 @@ Type stanosobnika=record
               max:=max+1;           
              end;
            end;
-          end;
- function GenDict.getValue(lab:longint):longint;
-          var val, i:longint;
-          begin
-           val:=0;
-           for i:=1 to max do
-           begin 
-            if labels[i]=lab then val:=values[i];
-           end;
-          getValue:=val;
           end;
  function GenDict.hasLabel(lab:longint):boolean;
           var i:longint;
@@ -492,7 +481,6 @@ assign(INFOavg,'infodynAvg.txt');
 
       {utworzenie populacji poczatkowej}
       if zrodla[i]=0 then N0:=0 else N0:=round(Ne*polepow[i]); 
-      //writeln(i,' ',zrodla[i],' ',N0);
 
       for os:=1 to N0 do
         begin
