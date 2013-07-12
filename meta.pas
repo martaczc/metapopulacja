@@ -16,7 +16,7 @@ const
  czas=100;//1000?
  lpowt=1;//1000? (czas=100,lpowt=100) -> symulacja trwala 6min na moim laptopie
  pmut=0.001;
- skos=0.5; //pdb wydluzenia motywu
+ skos=0.5; //pdb wydluzenia motywu. Dla skos = 0.5 rownie prawdopodobne wydluzenie co skrocenie.
  maxNAllel=1000;
  Ne=20;
 
@@ -249,17 +249,17 @@ function avgUnique(dictPop:GenDictPop): tablicaReal; //count averange number of 
  var i,j,l,n,lab:longint;
   stop:boolean;
  begin
- for i:=1 to k do
+ for i:=1 to k do //i -> nr populacji
   begin
    avgUnique[i]:=0;
-   for j:=1 to ngen do
+   for j:=1 to ngen do //j -> nr genu
     begin 
-     for l:=1 to dictPop[i][j].max do 
+     for l:=1 to dictPop[i][j].max do  //l -> nr allelu
       begin
        lab:=dictPop[i][j].labels[l];
        stop:=false;
        n:=0;
-       while ((n < k) and (stop=false)) do
+       while ((n < k) and (stop=false)) do //n -> nr populacji
         begin 
         n:=n+1;
         if ((dictPop[n][j].hasLabel(lab)) and (n<>i)) then
@@ -307,7 +307,7 @@ function expectPopHeterozigosity(dictPop:GenDictPop;N:liczebnosc): tablicaReal;
 
 begin
 
-{wczytanie danych z pliku INITgen.TXT}
+{wczytanie danych o rozkladzie genotypow w populacjach zrodlowych z pliku INITgen.TXT}
  for i:=1 to k0 do for j:=1 to ngen do allels0[i,j].max:=0;
  assign(initgen,'INITgen.TXT');
  reset(initgen);
@@ -330,7 +330,7 @@ begin
  for i:=1 to k0 do for j:=1 to ngen do allels0[i,j].check(i,j);
  close(initgen);  
 
-{wczytanie danych z pliku INITpop.TXT}
+{wczytanie danych o populacjach zrodlowych z pliku INITpop.TXT}
  assign(initpop,'INITpop.TXT');
  reset(initpop);
  readln(initpop,word);
@@ -381,13 +381,12 @@ begin
       end;
     end;
 
-{utworzenie naglowka pliku wyjsciowego (zawierajacego wyniki poszczegolnych powtorzen)}
+{utworzenie naglowka pliku wyjsciowego (zawierajacego wyniki poszczegolnych powtorzen symulacji)}
 assign(INFO,'infodyn.txt');
  rewrite(INFO);
  append(INFO);
  write(INFO,'Powtorzenie czas ');
  for i:=1 to k do write(INFO,'N',i,' ');
- for i:=1 to k do write(INFO,'Nm',i,' ');
  for i:=1 to k do write(INFO,'density',i,' ');
  for i:=1 to k do write(INFO,'avgAllelRichness',i,' ');
  for i:=1 to k do write(INFO,'avgPrivateAllels',i,' ');
@@ -423,7 +422,7 @@ assign(INFOavg,'infodynAvg.txt');
    for l:=1 to maxNAllel do
     begin
     allelsPop[i,j].labels[l]:=0;
-    allelsPop[i,j].labels[l]:=0;    
+    allelsPop[i,j].values[l]:=0;    
     end;
    end;
   end;
@@ -435,12 +434,12 @@ assign(INFOavg,'infodynAvg.txt');
   for l:=1 to maxNAllel do
    begin
    totalAllels[j].labels[l]:=0;
-   totalAllels[j].labels[l]:=0;    
+   totalAllels[j].values[l]:=0;    
    end;
   end;
 
 {===================================================================================================================================
-								S T A R T
+						S T A R T  S Y M U L A C J I
 ====================================================================================================================================}
   randomize;
 
@@ -479,7 +478,7 @@ assign(INFOavg,'infodynAvg.txt');
       Fst[i]:=0;
 
       {utworzenie populacji poczatkowej}
-      if zrodla[i]=0 then N0:=0 else N0:=round(Ne*polepow[i]); 
+      if zrodla[i]=0 then N0:=0 else N0:=round(0.1*Ne*polepow[i]); 
 
       for os:=1 to N0 do
         begin
@@ -575,12 +574,7 @@ assign(INFOavg,'infodynAvg.txt');
           osob:=POP0[i][os];
           if ((not winter) and (osob.plec=0) and (random<pr) and (Nm[i]>0)) then for pot:=1 to Lpotom(lambda) do
             begin
-            ojciec:=POP0[i][samce0[i][(random(Nm[i])+1)]];
-            {if ojciec.plec=0 then //czy wybieranie samca dobrze dziala?
-             begin
-             writeln('ojciec to samica',' t=',t);
-             Exit;
-             end;}
+            ojciec:=POP0[i][samce0[i][(random(Nm[i])+1)]]; //wybiera osobno ojca dla kazdego potomka
             potom.NRsubpop:=i;
             potom.nr:=ost[i]+1;
             potom.plec:=random(2);
@@ -707,13 +701,12 @@ assign(INFOavg,'infodynAvg.txt');
       for i:=1 to k do for os:=1 to N[i] do POP0[i][os]:=POP1[i][os];
       for i:=1 to k do for s:=1 to Nm[i] do samce0[i][s]:=samce1[i][s];
       gotoxy(1,whereY);
-      write(powt,' ',t)
+      if (t mod czas/100)=0 then write(powt,' ',t);
       end;
     end;
   close(INFO);
 
 {srednie dla powtorzen}
- append(INFOavg);
  for t:=1 to czas do
   begin
   for i:=1 to k do 
@@ -726,7 +719,7 @@ assign(INFOavg,'infodynAvg.txt');
     avgFis[t,i]:=avgFis[t,i]/lpowt;
     avgFst[t,i]:=avgFst[t,i]/lpowt;
     end;
-
+ append(INFOavg);
   write(INFOavg,t,' ');
   for i:=1 to k do write(INFOavg,avgN[t,i]:7:5,' ');
   for i:=1 to k do write(INFOavg,avgN[t,i]/polepow[i]:7:5,' ');
