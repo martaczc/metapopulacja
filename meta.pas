@@ -1,6 +1,6 @@
 //Kod zrodlowy programu symulujacego metapopulacje zlozona z subpopulacji zyjacych na rozlacznych platach powierzchni 
 
-Uses Crt;
+Uses Crt,math;
 const
  ngen=14; //liczba genow
  seasons=5;
@@ -11,10 +11,10 @@ const
  br=0.61371;
  as=0.1;
  bs=-1.59453;
- pe=0.01;
- cc=0.00174;
- czas=100;//1000?
- lpowt=1;//1000? (czas=100,lpowt=100) -> symulacja trwala 6min na moim laptopie
+ //pe=0.01;
+ cc=0; //cc=0.00174;
+ czas=1000;//1000?
+ lpowt=100;//1000? (czas=100,lpowt=100) -> symulacja trwala 6min na moim laptopie
  pmut=0.001;
  skos=0.5; //pdb wydluzenia motywu. Dla skos = 0.5 rownie prawdopodobne wydluzenie co skrocenie.
  maxNAllel=1000;
@@ -178,9 +178,9 @@ Type stanosobnika=record
           
 
 
-Var i, j, l, os, pot, t, powt, ll, dc, lm, s, Nt, locus, allel,N0,liczba: longint;
+Var i, j, l, os, pot, t, powt, ll, dc, lm, s, Nt, locus, allel,N0,liczba,emigracja: longint;
     N, Nm, Licz, Liczm, ost, lmigr : liczebnosc;
-    pr, ps, sum, Ht,freq: real; 
+    pr, ps, sum, Ht,freq,pe: real; 
     polepow : tablicaReal;
     minodl,tabc : tablica;
     osob,potom,ojciec : stanosobnika;
@@ -190,7 +190,7 @@ Var i, j, l, os, pot, t, powt, ll, dc, lm, s, Nt, locus, allel,N0,liczba: longin
     znak : char;
     INFO, INFO1, INFO2, INFOavg, initgen, initpop : text;
     wiersz : string[k];
-    word: string;
+    word,peText: string;
     allelsPop : GenDictPop;
     totalAllels: array[1..ngen] of GenDict;
     allels0: GenDictPop0;
@@ -381,8 +381,15 @@ begin
       end;
     end;
 
+//symulacje dla kolejnych wartosci pe
+pe:=1;
+ for emigracja:=1 to 5 do
+  begin
+  if emigracja=5 then pe:=0 else pe:=pe*0.1;
+  str(pe:7:4,peText);
+
 {utworzenie naglowka pliku wyjsciowego (zawierajacego wyniki poszczegolnych powtorzen symulacji)}
-assign(INFO,'infodyn.txt');
+assign(INFO,concat('infodyn',peText,'.txt'));
  rewrite(INFO);
  append(INFO);
  write(INFO,'Powtorzenie czas ');
@@ -398,7 +405,7 @@ assign(INFO,'infodyn.txt');
  close(INFO);
 
 {utworzenie naglowka pliku wyjsciowego (zawierajacego wyniki srednich dla powtorzen)}
-assign(INFOavg,'infodynAvg.txt');
+assign(INFOavg,concat('infodynAvg',peText,'.txt'));
  rewrite(INFOavg);
  append(INFOavg);
  write(INFOavg,'czas ');
@@ -457,7 +464,6 @@ assign(INFOavg,'infodynAvg.txt');
      avgFst[t,i]:=0;
      end;
    end;
-
 
   for powt:=1 to lpowt do
     begin
@@ -732,6 +738,7 @@ assign(INFOavg,'infodynAvg.txt');
   writeln(INFOavg);
   end;
   close(INFOavg);
+ end;
  writeln('Koniec');
  //repeat until Keypressed;
  //znak:=readkey;
