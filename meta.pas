@@ -481,8 +481,7 @@ assign(INFOavg,'infodynAvg.txt');
       Fst[i]:=0;
 
       {utworzenie populacji poczatkowej}
-     if zrodla[i]=0 then N0:=0 else N0:=round(0.1*Ne*polepow[i]); 
-     //N0:=round(Ne*polepow[i]);
+     if zrodla[i]=0 then N0:=0 else N0:=round(0.1*Ne*polepow[i]); ;
 
       for os:=1 to N0 do
         begin
@@ -525,8 +524,7 @@ assign(INFOavg,'infodynAvg.txt');
     He:=expectPopHeterozigosity(allelsPop,N);
     for j:=1 to ngen do Ht:=Ht+expectHeterozigosity(totalAllels[j],Nt);
     Ht:=Ht/ngen;
-    if Ht>1 then writeln('Ht!!!');
-    if Ht<0 then writeln('-Ht!!!');
+
     for i:=1 to k do
      begin
      if He[i]<>0 then Fis[i]:=(He[i]-Ho[i])/He[i] else Fis[i]:=0;
