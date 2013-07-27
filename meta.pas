@@ -14,8 +14,8 @@ const
  pe=0.01;
  cc=0.00174;
  czas=100;//1000?
- lpowt=1;//1000? (czas=100,lpowt=100) -> symulacja trwala 6min na moim laptopie
- pmut=0.001;
+ lpowt=100;//1000? (czas=100,lpowt=100) -> symulacja trwala 6min na moim laptopie
+ pmut=0.001; 
  skos=0.5; //pdb wydluzenia motywu. Dla skos = 0.5 rownie prawdopodobne wydluzenie co skrocenie.
  maxNAllel=1000;
  Ne=20;
@@ -276,16 +276,19 @@ function avgUnique(dictPop:GenDictPop): tablicaReal; //count averange number of 
  end;
 
 function expectHeterozigosity(dict:GenDict;N:longint): real;
- var l:longint;
+ var l,sum:longint;
   homozigotes:real;
  begin
+  sum:=0;
   if N=0 then expectHeterozigosity:=0 else
    begin
    homozigotes:=0;
    for l:=1 to dict.max do
     begin
     homozigotes:=homozigotes+(dict.values[l]*dict.values[l])/(4*N*N);
+    sum:=sum + dict.values[l];
     end;
+   if sum<>2*N then writeln ('sum = ',sum,' 2N = ',2*N);
    expectHeterozigosity:=1-homozigotes;
    end;
  end;
@@ -478,7 +481,8 @@ assign(INFOavg,'infodynAvg.txt');
       Fst[i]:=0;
 
       {utworzenie populacji poczatkowej}
-      if zrodla[i]=0 then N0:=0 else N0:=round(0.1*Ne*polepow[i]); 
+     if zrodla[i]=0 then N0:=0 else N0:=round(0.1*Ne*polepow[i]); 
+     //N0:=round(Ne*polepow[i]);
 
       for os:=1 to N0 do
         begin
@@ -513,6 +517,7 @@ assign(INFOavg,'infodynAvg.txt');
       avgAllelRichness[i]:=avgAllelRichness[i]+allelsPop[i,j].max;
       totalAllels[j].paste(allelsPop[i,j]);
       end;
+     avgAllelRichness[i]:=avgAllelRichness[i]/ngen;
      if N[i]<>0 then Ho[i]:=Ho[i]/(N[i]*ngen) else Ho[i]:=0;
      Nt:=Nt+N[i];
      end;
@@ -520,7 +525,8 @@ assign(INFOavg,'infodynAvg.txt');
     He:=expectPopHeterozigosity(allelsPop,N);
     for j:=1 to ngen do Ht:=Ht+expectHeterozigosity(totalAllels[j],Nt);
     Ht:=Ht/ngen;
-
+    if Ht>1 then writeln('Ht!!!');
+    if Ht<0 then writeln('-Ht!!!');
     for i:=1 to k do
      begin
      if He[i]<>0 then Fis[i]:=(He[i]-Ho[i])/He[i] else Fis[i]:=0;
@@ -552,6 +558,7 @@ assign(INFOavg,'infodynAvg.txt');
       {wyzerowanie licznikow}
      Nt:=0;
      Ht:=0;
+     for j:=1 to ngen do totalAllels[j].clear;
       for i:=1 to k do
        begin 
        lmigr[i]:=0;
@@ -659,6 +666,7 @@ assign(INFOavg,'infodynAvg.txt');
        for j:=1 to ngen do 
         begin
         avgAllelRichness[i]:=avgAllelRichness[i]+allelsPop[i,j].max;
+        totalAllels[j].paste(allelsPop[i,j]);
         end;
        avgAllelRichness[i]:=avgAllelRichness[i]/ngen;
        if N[i]<>0 then Ho[i]:=Ho[i]/(N[i]*ngen) else Ho[i]:=0;
@@ -668,6 +676,8 @@ assign(INFOavg,'infodynAvg.txt');
       He:=expectPopHeterozigosity(allelsPop,N);
       for j:=1 to ngen do Ht:=Ht+expectHeterozigosity(totalAllels[j],Nt);
       Ht:=Ht/ngen;
+      if Ht>1 then writeln('Ht!!!');
+      if Ht<0 then writeln('-Ht!!!');
 
       for i:=1 to k do
        begin
