@@ -178,9 +178,9 @@ Type stanosobnika=record
           
 
 
-Var i, j, l, os, pot, t, powt, ll, dc, lm, s, Nt, locus, allel,N0,liczba: longint;
+Var i, j, l, os, pot, t, powt, ll, dc, lm, s, Nt, locus, allel,N0,liczba,pairNumber: longint;
     N, Nm, Licz, Liczm, ost, lmigr : liczebnosc;
-    pr, ps, sum, Ht,freq: real; 
+    pr, ps, sum, Ht, PopPairHt, freq: real; 
     polepow : tablicaReal;
     minodl,tabc : tablica;
     osob,potom,ojciec : stanosobnika;
@@ -192,10 +192,12 @@ Var i, j, l, os, pot, t, powt, ll, dc, lm, s, Nt, locus, allel,N0,liczba: longin
     wiersz : string[k];
     word: string;
     allelsPop : GenDictPop;
-    totalAllels: array[1..ngen] of GenDict;
+    totalAllels,PopPairAllels: array[1..ngen] of GenDict;
     allels0: GenDictPop0;
     avgAllelRichness,avgPrivateAllels,He,Ho,Fis,Fst: tablicaReal;
+    PopPairFst: array[1..round(k*(k-1)/2)] of real;
     avgN, avgAAR, avgAPA, avgHe, avgHo, avgFis, avgFst: tablicaRealTime;
+    avgPPFst: array[1..czas,1..round(k*(k-1)/2)] of real;
     winter: boolean;
 
 function normal(mi,sigma:real):real; //losuje liczbe z rozkladu normalnego: do losowania liczby potomstwa przy duzych lambda
@@ -397,6 +399,15 @@ assign(INFO,'infodyn.txt');
  for i:=1 to k do write(INFO,'Ho',i,' ');
  for i:=1 to k do write(INFO,'Fis',i,' ');
  for i:=1 to k do write(INFO,'Fst',i,' ');
+ pairNumber:=0;
+ for i:=1 to k do
+  begin
+   for j:=i+1 to k do 
+    begin
+    pairNumber:=pairNumber+1;
+    write(INFO,'pairFst',i,'*',j,' ');
+    end;
+  end;
  writeln(INFO);
  close(INFO);
 
@@ -413,6 +424,7 @@ assign(INFOavg,'infodynAvg.txt');
  for i:=1 to k do write(INFOavg,'Ho',i,' ');
  for i:=1 to k do write(INFOavg,'Fis',i,' ');
  for i:=1 to k do write(INFOavg,'Fst',i,' ');
+ for pairNumber:=1 to round(k*(k-1)/2) do write(INFOavg,'pairFst',pairNumber,' ');
  writeln(INFOavg);
  close(INFOavg);
 
@@ -430,14 +442,17 @@ assign(INFOavg,'infodynAvg.txt');
    end;
   end;
 
-{Utworzenie tablicy totalAllels}
+{Utworzenie tablicy totalAllels i PopPairAllels}
  for j:=1 to ngen do
   totalAllels[j].max:=0;
+  PopPairAllels[j].max:=0;
   begin
   for l:=1 to maxNAllel do
    begin
    totalAllels[j].labels[l]:=0;
-   totalAllels[j].values[l]:=0;    
+   totalAllels[j].values[l]:=0;
+   PopPairAllels[j].labels[l]:=0;
+   PopPairAllels[j].values[l]:=0;   
    end;
   end;
 
@@ -459,7 +474,9 @@ assign(INFOavg,'infodynAvg.txt');
      avgFis[t,i]:=0;
      avgFst[t,i]:=0;
      end;
+    for pairNumber:=1 to round(k*(k-1)/2) do avgPPFst[t,pairNumber]:=0;
    end;
+  
 
 
   for powt:=1 to lpowt do
@@ -467,9 +484,11 @@ assign(INFOavg,'infodynAvg.txt');
 
     {wyzerowanie wskaznikow}    
     for j:=1 to ngen do totalAllels[j].clear;
+    //for j:=1 to ngen do PopPairAllels[j].clear;
     Nt:=0;
     Ht:=0;
     t:=0;
+    for j:=1 to round(k*(k-1)/2) do PopPairFst[j]:=0;
     for i:=1 to k do 
       begin
       lmigr[i]:=0;
@@ -481,7 +500,7 @@ assign(INFOavg,'infodynAvg.txt');
       Fst[i]:=0;
 
       {utworzenie populacji poczatkowej}
-     if zrodla[i]=0 then N0:=0 else N0:=round(0.1*Ne*polepow[i]); ;
+     if zrodla[i]=0 then N0:=0 else N0:=round(0.1*Ne*polepow[i]);
 
       for os:=1 to N0 do
         begin
@@ -530,6 +549,28 @@ assign(INFOavg,'infodynAvg.txt');
      if He[i]<>0 then Fis[i]:=(He[i]-Ho[i])/He[i] else Fis[i]:=0;
      if Ht<>0 then Fst[i]:=(Ht-He[i])/Ht else Fst[i]:=0;
      end;
+
+{wyliczanie wartosci Fst dla par populacji}
+    pairNumber:=0;
+    for i:=1 to k do
+     begin
+     for j:=i+1 to k do
+      begin
+      pairNumber:=pairNumber+1;
+      PopPairHt:=0;
+      for l:=1 to ngen do 
+       begin
+       PopPairAllels[l].clear;
+       PopPairAllels[l].paste(allelsPop[i,l]);
+       PopPairAllels[l].paste(allelsPop[j,l]);
+       PopPairHt:=PopPairHt + expectHeterozigosity(PopPairAllels[l],N[i]+N[j])
+       end;
+      PopPairHt:=PopPairHt/ngen;
+      if (N[i]+N[j])=0 then PopPairFst[pairNumber]:=1
+      else if PopPairHt<>0 then PopPairFst[pairNumber]:=(PopPairHt-(He[i]*N[i]+He[j]*N[j])/(N[i]+N[j]))/PopPairHt 
+      else PopPairFst[pairNumber]:=0;
+      end;
+     end;
       
     append(INFO);
     write(INFO,powt,' ',t,' ');
@@ -540,7 +581,8 @@ assign(INFOavg,'infodynAvg.txt');
     for i:=1 to k do write(INFO,He[i]:7:5,' ');
     for i:=1 to k do write(INFO,Ho[i]:7:5,' ');
     for i:=1 to k do write(INFO,Fis[i]:7:5,' ');
-    for i:=1 to k do write(INFO,Fst[i]:7:5,' ');   
+    for i:=1 to k do write(INFO,Fst[i]:7:5,' ');  
+    for pairNumber:=1 to round(k*(k-1)/2) do write(INFO,PopPairFst[pairNumber]:7:5,' '); 
     writeln(INFO);
     ll:=0; //parametr przerywajacy symulacje, jesli ktoras z populacji jest zbyt liczna
     for i:=1 to k do if N[i]>100000 then ll:=1;
@@ -676,11 +718,32 @@ assign(INFOavg,'infodynAvg.txt');
       Ht:=Ht/ngen;
       if Ht>1 then writeln('Ht!!!');
       if Ht<0 then writeln('-Ht!!!');
-
       for i:=1 to k do
        begin
        if He[i]<>0 then Fis[i]:=(He[i]-Ho[i])/He[i] else Fis[i]:=0;
        if Ht<>0 then Fst[i]:=(Ht-He[i])/Ht else Fst[i]:=0;
+       end;
+
+{wyliczanie wartości Fst dla par populacji}
+      pairNumber:=0;
+      for i:=1 to k do
+       begin
+       for j:=i+1 to k do
+        begin
+        pairNumber:=pairNumber+1;
+        PopPairHt:=0;
+        for l:=1 to ngen do 
+         begin
+         PopPairAllels[l].clear;
+         PopPairAllels[l].paste(allelsPop[i,l]);
+         PopPairAllels[l].paste(allelsPop[j,l]);
+         PopPairHt:=PopPairHt + expectHeterozigosity(PopPairAllels[l],N[i]+N[j])
+         end;
+        PopPairHt:=PopPairHt/ngen;
+        if (N[i]+N[j])=0 then PopPairFst[pairNumber]:=1
+        else if PopPairHt<>0 then PopPairFst[pairNumber]:=(PopPairHt-(He[i]*N[i]+He[j]*N[j])/(N[i]+N[j]))/PopPairHt 
+        else PopPairFst[pairNumber]:=0;
+        end;
        end;
 
 {sumy dla powtorzen}
@@ -694,7 +757,7 @@ assign(INFOavg,'infodynAvg.txt');
        avgFis[t,i]:=avgFis[t,i] + Fis[i];
        avgFst[t,i]:=avgFst[t,i] + Fst[i];
        end;
-
+      for pairNumber:=1 to round(k*(k-1)/2) do avgPPFst[t,pairNumber]:=avgPPFst[t,pairNumber]+PopPairFst[pairNumber];
       append(INFO);
       write(INFO,powt,' ',t,' ');
       for i:=1 to k do write(INFO,N[i],' ');
@@ -705,6 +768,7 @@ assign(INFOavg,'infodynAvg.txt');
       for i:=1 to k do write(INFO,Ho[i]:7:5,' ');
       for i:=1 to k do write(INFO,Fis[i]:7:5,' ');
       for i:=1 to k do write(INFO,Fst[i]:7:5,' ');
+      for pairNumber:=1 to round(k*(k-1)/2) do write(INFO,PopPairFst[pairNumber]:7:5,' '); 
       writeln(INFO);
       for i:=1 to k do for os:=1 to N[i] do POP0[i][os]:=POP1[i][os];
       for i:=1 to k do for s:=1 to Nm[i] do samce0[i][s]:=samce1[i][s];
@@ -715,6 +779,7 @@ assign(INFOavg,'infodynAvg.txt');
   close(INFO);
 
 {srednie dla powtorzen}
+ append(INFOavg);
  for t:=1 to czas do
   begin
   for i:=1 to k do 
@@ -727,7 +792,7 @@ assign(INFOavg,'infodynAvg.txt');
     avgFis[t,i]:=avgFis[t,i]/lpowt;
     avgFst[t,i]:=avgFst[t,i]/lpowt;
     end;
- append(INFOavg);
+  for pairNumber:=1 to round(k*(k-1)/2) do avgPPFst[t,pairNumber]:=avgFst[t,pairNumber]/lpowt;
   write(INFOavg,t,' ');
   for i:=1 to k do write(INFOavg,avgN[t,i]:7:5,' ');
   for i:=1 to k do write(INFOavg,avgN[t,i]/polepow[i]:7:5,' ');
@@ -737,9 +802,10 @@ assign(INFOavg,'infodynAvg.txt');
   for i:=1 to k do write(INFOavg,avgHo[t,i]:7:5,' ');
   for i:=1 to k do write(INFOavg,avgFis[t,i]:7:5,' ');
   for i:=1 to k do write(INFOavg,avgFst[t,i]:7:5,' ');
+  for pairNumber:=1 to round(k*(k-1)/2) do write(INFOavg,avgPPFst[t,pairNumber]:7:5,' ');
   writeln(INFOavg);
-  end;
-  close(INFOavg);
+ end;
+ close(INFOavg);
  writeln('Koniec');
  //repeat until Keypressed;
  //znak:=readkey;
