@@ -13,8 +13,8 @@ const
  bs=-1.59453;
  pe=0.01;
  cc=0.00174;
- czas=100;//1000?
- lpowt=100;//1000? (czas=100,lpowt=100) -> symulacja trwala 6min na moim laptopie
+ czas=10;//1000?
+ lpowt=1;//1000? (czas=100,lpowt=100) -> symulacja trwala 6min na moim laptopie
  pmut=0.001; 
  skos=0.5; //pdb wydluzenia motywu. Dla skos = 0.5 rownie prawdopodobne wydluzenie co skrocenie.
  maxNAllel=1000;
@@ -28,6 +28,7 @@ Type stanosobnika=record
           end;
  stanpopulacji=array[1..100000] of stanosobnika;
  nrSamcow=array[1..100000] of longint;
+ tab = array[1..1000] of longint;
  liczebnosc=array[1..k] of longint;
  tablica=array[1..k, 1..k] of real;
  tablicaReal=array[1..k] of real;
@@ -180,7 +181,7 @@ Type stanosobnika=record
 
 Var i, j, l, os, pot, t, powt, ll, dc, lm, s, Nt, locus, allel,N0,liczba,pairNumber: longint;
     N, Nm, Licz, Liczm, ost, lmigr : liczebnosc;
-    pr, ps, sum, Ht, PopPairHt, freq: real; 
+    pr, ps, sum, Ht, PopPairHt, freq, Fst: real; 
     polepow : tablicaReal;
     minodl,tabc : tablica;
     osob,potom,ojciec : stanosobnika;
@@ -188,16 +189,16 @@ Var i, j, l, os, pot, t, powt, ll, dc, lm, s, Nt, locus, allel,N0,liczba,pairNum
     samce0, samce1: array[1..k] of nrSamcow; 
     zrodla: array[1..k] of longint;
     znak : char;
-    INFO, INFO1, INFO2, INFOavg, initgen, initpop : text;
+    INFO, INFO1, INFO2, INFOsample, initgen, initpop, sampleSize : text; // INFOavg
     wiersz : string[k];
     word: string;
     allelsPop : GenDictPop;
     totalAllels,PopPairAllels: array[1..ngen] of GenDict;
     allels0: GenDictPop0;
-    avgAllelRichness,avgPrivateAllels,He,Ho,Fis,Fst: tablicaReal;
+    avgAllelRichness,avgPrivateAllels,He,Ho,Fis: tablicaReal;
     PopPairFst: array[1..round(k*(k-1)/2)] of real;
-    avgN, avgAAR, avgAPA, avgHe, avgHo, avgFis, avgFst: tablicaRealTime;
-    avgPPFst: array[1..czas,1..round(k*(k-1)/2)] of real;
+    //avgN, avgAAR, avgAPA, avgHe, avgHo, avgFis, avgFst: tablicaRealTime;
+    //avgPPFst: array[1..czas,1..round(k*(k-1)/2)] of real;
     winter: boolean;
 
 function normal(mi,sigma:real):real; //losuje liczbe z rozkladu normalnego: do losowania liczby potomstwa przy duzych lambda
@@ -210,6 +211,33 @@ begin
   normal:=sigma*cos(alfa)*sqrt(-2*ln(sqr(r2)))+mi;
 end;
 
+function combination(m,n:longint):tab; //losuje kombinacje bez powtorzen m liczb z posrod n (wynik w postaci array). Dla m>=n wybiera wszystkie (uwaga: liczba wynikow!).
+ var i,j,l,r,count:longint;
+     present:boolean;
+ begin
+ if m>=n then for i:=1 to n do combination[i]:=i else
+  begin
+  for i:=1 to m do
+   begin
+   r:=random(n-i+1)+1;
+   writeln('random=',r);
+   count:=0;
+   j:=1;
+   while(j<=r) do
+    begin
+    count:=count+1;
+    present:=false;
+    for l:=1 to m-1 do
+     begin
+     if combination[l]=count then present:=true;
+     end;
+    if present then else j:=j+1;
+    end;
+   combination[i]:=count; 
+   end;
+  end;
+ end;
+ 
 Function Lpotom(lambda:real):longint; //losuje liczbe potomkow z przesunietego o 1 rozkladu poissona o sredniej lambda
  var L:longint;
      x,y,LOT:real;
@@ -412,7 +440,7 @@ assign(INFO,'infodyn.txt');
  close(INFO);
 
 {utworzenie naglowka pliku wyjsciowego (zawierajacego wyniki srednich dla powtorzen)}
-assign(INFOavg,'infodynAvg.txt');
+{assign(INFOavg,'infodynAvg.txt');
  rewrite(INFOavg);
  append(INFOavg);
  write(INFOavg,'czas ');
@@ -426,7 +454,7 @@ assign(INFOavg,'infodynAvg.txt');
  for i:=1 to k do write(INFOavg,'Fst',i,' ');
  for pairNumber:=1 to round(k*(k-1)/2) do write(INFOavg,'pairFst',pairNumber,' ');
  writeln(INFOavg);
- close(INFOavg);
+ close(INFOavg);}
 
 {Utworzenie tablicy allelsPop}
  for i:=1 to k do
@@ -462,7 +490,7 @@ assign(INFOavg,'infodynAvg.txt');
   randomize;
 
 {wyzerowanie wskaznikow srednich dla wszystkich powtorzen}
-  for t:=1 to czas do
+ { for t:=1 to czas do
    begin
     for i:=1 to k do 
      begin
@@ -475,7 +503,7 @@ assign(INFOavg,'infodynAvg.txt');
      avgFst[t,i]:=0;
      end;
     for pairNumber:=1 to round(k*(k-1)/2) do avgPPFst[t,pairNumber]:=0;
-   end;
+   end;}
   
 
 
@@ -487,6 +515,7 @@ assign(INFOavg,'infodynAvg.txt');
     //for j:=1 to ngen do PopPairAllels[j].clear;
     Nt:=0;
     Ht:=0;
+    Fst:=1;
     t:=0;
     for j:=1 to round(k*(k-1)/2) do PopPairFst[j]:=0;
     for i:=1 to k do 
@@ -497,7 +526,6 @@ assign(INFOavg,'infodynAvg.txt');
       Nm[i]:=0;
       Ho[i]:=0;
       Fis[i]:=0;
-      Fst[i]:=0;
 
       {utworzenie populacji poczatkowej}
      if zrodla[i]=0 then N0:=0 else N0:=round(0.1*Ne*polepow[i]);
@@ -547,7 +575,7 @@ assign(INFOavg,'infodynAvg.txt');
     for i:=1 to k do
      begin
      if He[i]<>0 then Fis[i]:=(He[i]-Ho[i])/He[i] else Fis[i]:=0;
-     if Ht<>0 then Fst[i]:=(Ht-He[i])/Ht else Fst[i]:=0;
+     if Ht<>0 then Fst:=Fst - He[i]*N[i]/(Ht*Nt) else Fst:=0;
      end;
 
 {wyliczanie wartosci Fst dla par populacji}
@@ -581,7 +609,7 @@ assign(INFOavg,'infodynAvg.txt');
     for i:=1 to k do write(INFO,He[i]:7:5,' ');
     for i:=1 to k do write(INFO,Ho[i]:7:5,' ');
     for i:=1 to k do write(INFO,Fis[i]:7:5,' ');
-    for i:=1 to k do write(INFO,Fst[i]:7:5,' ');  
+    write(INFO,Fst:7:5,' ');  
     for pairNumber:=1 to round(k*(k-1)/2) do write(INFO,PopPairFst[pairNumber]:7:5,' '); 
     writeln(INFO);
     ll:=0; //parametr przerywajacy symulacje, jesli ktoras z populacji jest zbyt liczna
@@ -598,6 +626,7 @@ assign(INFOavg,'infodynAvg.txt');
       {wyzerowanie licznikow}
      Nt:=0;
      Ht:=0;
+     Fst:=1;
      for j:=1 to ngen do totalAllels[j].clear;
       for i:=1 to k do
        begin 
@@ -721,8 +750,10 @@ assign(INFOavg,'infodynAvg.txt');
       for i:=1 to k do
        begin
        if He[i]<>0 then Fis[i]:=(He[i]-Ho[i])/He[i] else Fis[i]:=0;
-       if Ht<>0 then Fst[i]:=(Ht-He[i])/Ht else Fst[i]:=0;
+       if ((Fis[i]<-1) or (Fis[i]>1)) then writeln('Fis[',i,']=',Fis[i]:5:7);
+       if Ht*Nt<>0 then Fst:=Fst - He[i]*N[i]/(Ht*Nt) else Fst:=0;
        end;
+      if Fst<0 then writeln('Fst<0 ','t=',t,' Ht=',Ht:5:7);
 
 {wyliczanie wartości Fst dla par populacji}
       pairNumber:=0;
@@ -747,7 +778,7 @@ assign(INFOavg,'infodynAvg.txt');
        end;
 
 {sumy dla powtorzen}
-      for i:=1 to k do 
+      {for i:=1 to k do 
        begin
        avgN[t,i]:=avgN[t,i] + N[i];
        avgAAR[t,i]:=avgAAR[t,i] + avgAllelRichness[i];
@@ -757,8 +788,9 @@ assign(INFOavg,'infodynAvg.txt');
        avgFis[t,i]:=avgFis[t,i] + Fis[i];
        avgFst[t,i]:=avgFst[t,i] + Fst[i];
        end;
-      for pairNumber:=1 to round(k*(k-1)/2) do avgPPFst[t,pairNumber]:=avgPPFst[t,pairNumber]+PopPairFst[pairNumber];
-      append(INFO);
+      for pairNumber:=1 to round(k*(k-1)/2) do avgPPFst[t,pairNumber]:=avgPPFst[t,pairNumber]+PopPairFst[pairNumber];}
+      
+      append(INFO);           
       write(INFO,powt,' ',t,' ');
       for i:=1 to k do write(INFO,N[i],' ');
       for i:=1 to k do write(INFO,N[i]/polepow[i]:7:5,' ');
@@ -767,7 +799,7 @@ assign(INFOavg,'infodynAvg.txt');
       for i:=1 to k do write(INFO,He[i]:7:5,' ');
       for i:=1 to k do write(INFO,Ho[i]:7:5,' ');
       for i:=1 to k do write(INFO,Fis[i]:7:5,' ');
-      for i:=1 to k do write(INFO,Fst[i]:7:5,' ');
+      write(INFO,Fst:7:5,' ');
       for pairNumber:=1 to round(k*(k-1)/2) do write(INFO,PopPairFst[pairNumber]:7:5,' '); 
       writeln(INFO);
       for i:=1 to k do for os:=1 to N[i] do POP0[i][os]:=POP1[i][os];
@@ -779,7 +811,7 @@ assign(INFOavg,'infodynAvg.txt');
   close(INFO);
 
 {srednie dla powtorzen}
- append(INFOavg);
+ {append(INFOavg);
  for t:=1 to czas do
   begin
   for i:=1 to k do 
@@ -805,7 +837,7 @@ assign(INFOavg,'infodynAvg.txt');
   for pairNumber:=1 to round(k*(k-1)/2) do write(INFOavg,avgPPFst[t,pairNumber]:7:5,' ');
   writeln(INFOavg);
  end;
- close(INFOavg);
+ close(INFOavg);}
  writeln('Koniec');
  //repeat until Keypressed;
  //znak:=readkey;
