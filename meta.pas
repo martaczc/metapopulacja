@@ -11,14 +11,15 @@ const
  br=0.61371;
  as=0.1;
  bs=-1.59453;
- pe=0.01;
+ pe=0;
  cc=0.00174;
- czas=10;//1000?
+ czas=1000;//1000?
  lpowt=1;//1000? (czas=100,lpowt=100) -> symulacja trwala 6min na moim laptopie
  pmut=0.001; 
  skos=0.5; //pdb wydluzenia motywu. Dla skos = 0.5 rownie prawdopodobne wydluzenie co skrocenie.
  maxNAllel=1000;
  Ne=20;
+ NumberOfSampling=100;
 
 Type stanosobnika=record
           NRsubpop:longint;
@@ -187,7 +188,8 @@ Var i, j, l, os, pot, t, powt, ll, dc, lm, s, Nt, locus, allel,N0,liczba,pairNum
     osob,potom,ojciec : stanosobnika;
     POP0,POP1,POPmigr : array[1..k] of stanpopulacji;
     samce0, samce1: array[1..k] of nrSamcow; 
-    zrodla: array[1..k] of longint;
+    zrodla, sample,Nsample : array[1..k] of longint;
+    numbers: tab;
     znak : char;
     INFO, INFO1, INFO2, INFOsample, initgen, initpop, sampleSize : text; // INFOavg
     wiersz : string[k];
@@ -215,12 +217,17 @@ function combination(m,n:longint):tab; //losuje kombinacje bez powtorzen m liczb
  var i,j,l,r,count:longint;
      present:boolean;
  begin
- if m>=n then for i:=1 to n do combination[i]:=i else
+ if m>=n then
+  begin
+  for i:=1 to n do combination[i]:=i;
+  writeln('Error: combination','m=',m,'>n=',n);
+  end
+ else
   begin
   for i:=1 to m do
    begin
    r:=random(n-i+1)+1;
-   writeln('random=',r);
+   //writeln('random=',r);
    count:=0;
    j:=1;
    while(j<=r) do
@@ -402,7 +409,19 @@ begin
     readln(INFO2);
     end;
   close(INFO2);
-
+  
+{wczytanie liczebności losowanych prob}
+  assign(sampleSize,'sampleSize.txt');
+  reset(sampleSize);
+  readln(sampleSize,wiersz);
+  for i:=1 to k do
+   begin
+   read(sampleSize,liczba,znak,sample[i],znak);
+   //writeln(' ',sample[i],' ');
+   readln(sampleSize);
+   end;
+  close(sampleSize);
+  
 {utworzenie tablicy tabc[i,j] na podstawie cc i minimalnych odleglosci}
   for j:=1 to k do
     begin
@@ -426,7 +445,7 @@ assign(INFO,'infodyn.txt');
  for i:=1 to k do write(INFO,'He',i,' ');
  for i:=1 to k do write(INFO,'Ho',i,' ');
  for i:=1 to k do write(INFO,'Fis',i,' ');
- for i:=1 to k do write(INFO,'Fst',i,' ');
+ write(INFO,'Fst',' ');
  pairNumber:=0;
  for i:=1 to k do
   begin
@@ -438,6 +457,23 @@ assign(INFO,'infodyn.txt');
   end;
  writeln(INFO);
  close(INFO);
+ 
+{utworzenie naglowka pliku wyjsciowego (zawierajacego wyniki dla wylosowanych z populacji prob)}
+assign(INFOsample,'infodynSample.txt');
+ rewrite(INFOsample);
+ append(INFOsample);
+ write(INFOsample,'Powtorzenie czas losowanie ');
+ for i:=1 to k do write(INFOsample,'N',i,' ');
+ for i:=1 to k do write(INFOsample,'N',i,'>sample',i,' ');
+ for i:=1 to k do write(INFOsample,'avgAllelRichness',i,' ');
+ for i:=1 to k do write(INFOsample,'avgPrivateAllels',i,' ');
+ for i:=1 to k do write(INFOsample,'He',i,' ');
+ for i:=1 to k do write(INFOsample,'Ho',i,' ');
+ for i:=1 to k do write(INFOsample,'Fis',i,' ');
+ write(INFOsample,'Fst',' ');
+ for pairNumber:=1 to round(k*(k-1)/2) do write(INFOsample,'pairFst',pairNumber,' ');
+ writeln(INFOsample);
+ close(INFOsample);
 
 {utworzenie naglowka pliku wyjsciowego (zawierajacego wyniki srednich dla powtorzen)}
 {assign(INFOavg,'infodynAvg.txt');
@@ -802,13 +838,117 @@ assign(INFO,'infodyn.txt');
       write(INFO,Fst:7:5,' ');
       for pairNumber:=1 to round(k*(k-1)/2) do write(INFO,PopPairFst[pairNumber]:7:5,' '); 
       writeln(INFO);
+      close(INFO);
+      
       for i:=1 to k do for os:=1 to N[i] do POP0[i][os]:=POP1[i][os];
       for i:=1 to k do for s:=1 to Nm[i] do samce0[i][s]:=samce1[i][s];
       gotoxy(1,whereY);
       if (t mod czas/100)=0 then write(powt,' ',t);
+      
+      //Losowanie prób z populacji
+      if (((t mod 5)=3) and (t>900)) then for s:=1 to NumberOfSampling do 
+       begin
+       
+           {wyzerowanie wskaznikow}    
+       for j:=1 to ngen do totalAllels[j].clear;
+       //for j:=1 to ngen do PopPairAllels[j].clear;
+       Nt:=0;
+       Ht:=0;
+       Fst:=1;
+       for j:=1 to round(k*(k-1)/2) do PopPairFst[j]:=0;
+       for i:=1 to k do 
+        begin    
+        if N[i]>sample[i] then
+         begin
+         Licz[i]:=sample[i];
+         avgAllelRichness[i]:=0;
+         for j:=1 to ngen do allelsPop[i,j].clear;
+         Ho[i]:=0;
+         Fis[i]:=0;
+         Nsample[i]:=1;
+         numbers:=combination(sample[i],N[i]);
+         for os:=1 to sample[i] do
+          begin
+          osob:=POP0[i][numbers[os]];
+          for j:=1 to ngen do
+           begin
+           allelsPop[i,j].add(osob.geny[j,0]);
+           allelsPop[i,j].add(osob.geny[j,1]);
+           if osob.geny[j,0]<>osob.geny[j,1] then Ho[i]:=Ho[i]+1;
+           end; 
+          end;
+         end
+        else Nsample[i]:=0;
+        end;
+        
+        {statystyki}
+       for i:=1 to k do 
+        begin
+        avgAllelRichness[i]:=0;
+        for j:=1 to ngen do 
+         begin
+         avgAllelRichness[i]:=avgAllelRichness[i]+allelsPop[i,j].max;
+         totalAllels[j].paste(allelsPop[i,j]);
+         end;
+        avgAllelRichness[i]:=avgAllelRichness[i]/ngen;
+        if Licz[i]<>0 then Ho[i]:=Ho[i]/(Licz[i]*ngen) else Ho[i]:=0;
+        Nt:=Nt+Licz[i];
+        end;
+       avgPrivateAllels:=avgUnique(allelsPop); 
+       He:=expectPopHeterozigosity(allelsPop,Licz);
+       for j:=1 to ngen do Ht:=Ht+expectHeterozigosity(totalAllels[j],Nt);
+       Ht:=Ht/ngen;
+       if Ht>1 then writeln('Ht!!!');
+       if Ht<0 then writeln('-Ht!!!');
+       for i:=1 to k do
+        begin
+        if He[i]<>0 then Fis[i]:=(He[i]-Ho[i])/He[i] else Fis[i]:=0;
+        if ((Fis[i]<-1) or (Fis[i]>1)) then writeln('Fis[',i,']=',Fis[i]:5:7);
+        if Ht*Nt<>0 then Fst:=Fst - He[i]*Licz[i]/(Ht*Nt) else Fst:=0;
+        end;
+       if Fst<0 then writeln('Fst<0 ','t=',t,' Ht=',Ht:5:7);
+
+{wyliczanie wartości Fst dla par populacji}
+       pairNumber:=0;
+       for i:=1 to k do
+        begin
+        for j:=i+1 to k do
+         begin
+         pairNumber:=pairNumber+1;
+         PopPairHt:=0;
+         for l:=1 to ngen do 
+          begin
+          PopPairAllels[l].clear;
+          PopPairAllels[l].paste(allelsPop[i,l]);
+          PopPairAllels[l].paste(allelsPop[j,l]);
+          PopPairHt:=PopPairHt + expectHeterozigosity(PopPairAllels[l],Licz[i]+Licz[j])
+          end;
+         PopPairHt:=PopPairHt/ngen;
+         if (Licz[i]+Licz[j])=0 then PopPairFst[pairNumber]:=1
+         else if PopPairHt<>0 then PopPairFst[pairNumber]:=(PopPairHt-(He[i]*Licz[i]+He[j]*Licz[j])/(Licz[i]+Licz[j]))/PopPairHt 
+         else PopPairFst[pairNumber]:=0;
+         end;
+        end;
+       {wpisywanie wyników do INFOsample}
+       append(INFOsample);           
+       write(INFOsample,powt,' ',t,' ',s,' ');
+       for i:=1 to k do write(INFOsample,Licz[i],' ');
+       for i:=1 to k do write(INFOsample,Nsample[i],' ');
+       for i:=1 to k do write(INFOsample,avgAllelRichness[i]:7:5,' ');
+       for i:=1 to k do write(INFOsample,avgPrivateAllels[i]:7:5,' ');
+       for i:=1 to k do write(INFOsample,He[i]:7:5,' ');
+       for i:=1 to k do write(INFOsample,Ho[i]:7:5,' ');
+       for i:=1 to k do write(INFOsample,Fis[i]:7:5,' ');
+       write(INFOsample,Fst:7:5,' ');
+       for pairNumber:=1 to round(k*(k-1)/2) do write(INFOsample,PopPairFst[pairNumber]:7:5,' '); 
+       writeln(INFOsample);
+       close(INFOsample);
+       
+       end;
+             
       end;
     end;
-  close(INFO);
+  
 
 {srednie dla powtorzen}
  {append(INFOavg);
