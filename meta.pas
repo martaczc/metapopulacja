@@ -11,11 +11,11 @@ const
  br=0.61371;
  as=0.1;
  bs=-1.59453;
- pe=0;
- cc=0.00174;
+ //pe=0.01;
+ cc=0; //cc=0.00174;
  czas=1000;//1000?
- lpowt=1;//1000? (czas=100,lpowt=100) -> symulacja trwala 6min na moim laptopie
- pmut=0.001; 
+ lpowt=100;//1000? (czas=100,lpowt=100) -> symulacja trwala 6min na moim laptopie
+ pmut=0.001;
  skos=0.5; //pdb wydluzenia motywu. Dla skos = 0.5 rownie prawdopodobne wydluzenie co skrocenie.
  maxNAllel=1000;
  Ne=20;
@@ -180,9 +180,9 @@ Type stanosobnika=record
           
 
 
-Var i, j, l, os, pot, t, powt, ll, dc, lm, s, Nt, locus, allel,N0,liczba,pairNumber: longint;
+Var i, j, l, os, pot, t, powt, ll, dc, lm, s, Nt, locus, allel,N0,liczba,pairNumber,emigracja: longint;
     N, Nm, Licz, Liczm, ost, lmigr : liczebnosc;
-    pr, ps, sum, Ht, PopPairHt, freq, Fst: real; 
+    pr, ps, sum, Ht, PopPairHt, freq, Fst,pe: real; 
     polepow : tablicaReal;
     minodl,tabc : tablica;
     osob,potom,ojciec : stanosobnika;
@@ -193,7 +193,7 @@ Var i, j, l, os, pot, t, powt, ll, dc, lm, s, Nt, locus, allel,N0,liczba,pairNum
     znak : char;
     INFO, INFO1, INFO2, INFOsample, initgen, initpop, sampleSize : text; // INFOavg
     wiersz : string[k];
-    word: string;
+    word,peText: string;
     allelsPop : GenDictPop;
     totalAllels,PopPairAllels: array[1..ngen] of GenDict;
     allels0: GenDictPop0;
@@ -433,8 +433,15 @@ begin
       end;
     end;
 
+//symulacje dla kolejnych wartosci pe
+pe:=1;
+ for emigracja:=1 to 5 do
+  begin
+  if emigracja=5 then pe:=0 else pe:=pe*0.1;
+  str(pe:7:4,peText);
+
 {utworzenie naglowka pliku wyjsciowego (zawierajacego wyniki poszczegolnych powtorzen symulacji)}
-assign(INFO,'infodyn.txt');
+assign(INFO,concat('infodyn',peText,'.txt'));
  rewrite(INFO);
  append(INFO);
  write(INFO,'Powtorzenie czas ');
@@ -459,7 +466,7 @@ assign(INFO,'infodyn.txt');
  close(INFO);
  
 {utworzenie naglowka pliku wyjsciowego (zawierajacego wyniki dla wylosowanych z populacji prob)}
-assign(INFOsample,'infodynSample.txt');
+assign(INFOsample,concat('infodynSample',peText,'.txt'));
  rewrite(INFOsample);
  append(INFOsample);
  write(INFOsample,'Powtorzenie czas losowanie ');
@@ -476,7 +483,7 @@ assign(INFOsample,'infodynSample.txt');
  close(INFOsample);
 
 {utworzenie naglowka pliku wyjsciowego (zawierajacego wyniki srednich dla powtorzen)}
-{assign(INFOavg,'infodynAvg.txt');
+{assign(INFOavg,concat('infodynAvg',peText,'.txt'));
  rewrite(INFOavg);
  append(INFOavg);
  write(INFOavg,'czas ');
@@ -487,7 +494,7 @@ assign(INFOsample,'infodynSample.txt');
  for i:=1 to k do write(INFOavg,'He',i,' ');
  for i:=1 to k do write(INFOavg,'Ho',i,' ');
  for i:=1 to k do write(INFOavg,'Fis',i,' ');
- for i:=1 to k do write(INFOavg,'Fst',i,' ');
+ write(INFOavg,'Fst',' ');
  for pairNumber:=1 to round(k*(k-1)/2) do write(INFOavg,'pairFst',pairNumber,' ');
  writeln(INFOavg);
  close(INFOavg);}
@@ -843,7 +850,7 @@ assign(INFOsample,'infodynSample.txt');
       for i:=1 to k do for os:=1 to N[i] do POP0[i][os]:=POP1[i][os];
       for i:=1 to k do for s:=1 to Nm[i] do samce0[i][s]:=samce1[i][s];
       gotoxy(1,whereY);
-      if (t mod czas/100)=0 then write(powt,' ',t);
+      if (t mod 100)=0 then write(powt,' ',t);
       
       //Losowanie prób z populacji
       if (((t mod 5)=3) and (t>900)) then for s:=1 to NumberOfSampling do 
@@ -947,6 +954,7 @@ assign(INFOsample,'infodynSample.txt');
        end;
              
       end;
+     end;
     end;
   
 
