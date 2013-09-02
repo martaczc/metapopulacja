@@ -478,7 +478,14 @@ assign(INFOsample,concat('infodynSample',peText,'.txt'));
  for i:=1 to k do write(INFOsample,'Ho',i,' ');
  for i:=1 to k do write(INFOsample,'Fis',i,' ');
  write(INFOsample,'Fst',' ');
- for pairNumber:=1 to round(k*(k-1)/2) do write(INFOsample,'pairFst',pairNumber,' ');
+ for i:=1 to k do
+  begin
+   for j:=i+1 to k do 
+    begin
+    pairNumber:=pairNumber+1;
+    write(INFOsample,'pairFst',i,'*',j,' ');
+    end;
+  end;
  writeln(INFOsample);
  close(INFOsample);
 
