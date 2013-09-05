@@ -12,9 +12,9 @@ const
  as=0.1;
  bs=-1.59453;
  //pe=0.01;
- cc=0; //cc=0.00174;
+ cc=0.00174;
  czas=1000;//1000?
- lpowt=100;//1000? (czas=100,lpowt=100) -> symulacja trwala 6min na moim laptopie
+ lpowt=1;//1000? (czas=100,lpowt=100) -> symulacja trwala 6min na moim laptopie
  pmut=0.001;
  skos=0.5; //pdb wydluzenia motywu. Dla skos = 0.5 rownie prawdopodobne wydluzenie co skrocenie.
  maxNAllel=1000;
@@ -182,7 +182,7 @@ Type stanosobnika=record
 
 Var i, j, l, os, pot, t, powt, ll, dc, lm, s, Nt, locus, allel,N0,liczba,pairNumber,emigracja: longint;
     N, Nm, Licz, Liczm, ost, lmigr : liczebnosc;
-    pr, ps, sum, Ht, PopPairHt, freq, Fst,pe: real; 
+    pr, ps, sum, Ht, PopPairHt, freq, Fst,pe,totalAllelRichness: real; 
     polepow : tablicaReal;
     minodl,tabc : tablica;
     osob,potom,ojciec : stanosobnika;
@@ -453,6 +453,7 @@ assign(INFO,concat('infodyn',peText,'.txt'));
  for i:=1 to k do write(INFO,'Ho',i,' ');
  for i:=1 to k do write(INFO,'Fis',i,' ');
  write(INFO,'Fst',' ');
+ write(INFO,'totalAllelRichness',' ');
  pairNumber:=0;
  for i:=1 to k do
   begin
@@ -567,6 +568,7 @@ assign(INFOsample,concat('infodynSample',peText,'.txt'));
     Ht:=0;
     Fst:=1;
     t:=0;
+    totalAllelRichness:=0;
     for j:=1 to round(k*(k-1)/2) do PopPairFst[j]:=0;
     for i:=1 to k do 
       begin
@@ -616,6 +618,8 @@ assign(INFOsample,concat('infodynSample',peText,'.txt'));
      avgAllelRichness[i]:=avgAllelRichness[i]/ngen;
      if N[i]<>0 then Ho[i]:=Ho[i]/(N[i]*ngen) else Ho[i]:=0;
      Nt:=Nt+N[i];
+     for j:=1 to ngen do totalAllelRichness:=totalAllelRichness+totalAllels[j].max;
+     totalAllelRichness:=totalAllelRichness/ngen;
      end;
     avgPrivateAllels:=avgUnique(allelsPop); 
     He:=expectPopHeterozigosity(allelsPop,N);
@@ -660,6 +664,7 @@ assign(INFOsample,concat('infodynSample',peText,'.txt'));
     for i:=1 to k do write(INFO,Ho[i]:7:5,' ');
     for i:=1 to k do write(INFO,Fis[i]:7:5,' ');
     write(INFO,Fst:7:5,' ');  
+    write(INFO,totalAllelRichness:3:5);
     for pairNumber:=1 to round(k*(k-1)/2) do write(INFO,PopPairFst[pairNumber]:7:5,' '); 
     writeln(INFO);
     ll:=0; //parametr przerywajacy symulacje, jesli ktoras z populacji jest zbyt liczna
@@ -677,6 +682,7 @@ assign(INFOsample,concat('infodynSample',peText,'.txt'));
      Nt:=0;
      Ht:=0;
      Fst:=1;
+     totalAllelRichness:=0;
      for j:=1 to ngen do totalAllels[j].clear;
       for i:=1 to k do
        begin 
@@ -777,6 +783,7 @@ assign(INFOsample,concat('infodynSample',peText,'.txt'));
          samce1[i][Nm[i]]:=N[i];   
          end;
         end;
+      Licz:=N;
 
 {statystyki}
       for i:=1 to k do 
@@ -791,6 +798,8 @@ assign(INFOsample,concat('infodynSample',peText,'.txt'));
        if N[i]<>0 then Ho[i]:=Ho[i]/(N[i]*ngen) else Ho[i]:=0;
        Nt:=Nt+N[i];
        end;
+      for j:=1 to ngen do totalAllelRichness:=totalAllelRichness+totalAllels[j].max;
+      totalAllelRichness:=totalAllelRichness/ngen;
       avgPrivateAllels:=avgUnique(allelsPop); 
       He:=expectPopHeterozigosity(allelsPop,N);
       for j:=1 to ngen do Ht:=Ht+expectHeterozigosity(totalAllels[j],Nt);
@@ -850,14 +859,19 @@ assign(INFOsample,concat('infodynSample',peText,'.txt'));
       for i:=1 to k do write(INFO,Ho[i]:7:5,' ');
       for i:=1 to k do write(INFO,Fis[i]:7:5,' ');
       write(INFO,Fst:7:5,' ');
+      write(INFO,totalAllelRichness:3:5);
       for pairNumber:=1 to round(k*(k-1)/2) do write(INFO,PopPairFst[pairNumber]:7:5,' '); 
       writeln(INFO);
       close(INFO);
       
       for i:=1 to k do for os:=1 to N[i] do POP0[i][os]:=POP1[i][os];
       for i:=1 to k do for s:=1 to Nm[i] do samce0[i][s]:=samce1[i][s];
-      gotoxy(1,whereY);
-      if (t mod 100)=0 then write(powt,' ',t);
+      if (t mod 100)=0 then
+       begin
+       gotoxy(1,whereY);
+       ClrEol();
+       write(powt,' ',t);
+       end;
       
       //Losowanie prób z populacji
       if (((t mod 5)=3) and (t>900)) then for s:=1 to NumberOfSampling do 
@@ -892,7 +906,7 @@ assign(INFOsample,concat('infodynSample',peText,'.txt'));
            end; 
           end;
          end
-        else Nsample[i]:=0;
+         else Nsample[i]:=0;
         end;
         
         {statystyki}
@@ -958,10 +972,10 @@ assign(INFOsample,concat('infodynSample',peText,'.txt'));
        writeln(INFOsample);
        close(INFOsample);
        
-       end;
-             
+       end;      
       end;
      end;
+    writeln(); 
     end;
   
 
