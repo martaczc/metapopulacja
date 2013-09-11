@@ -20,6 +20,7 @@ const
  maxNAllel=1000;
  Ne=20;
  NumberOfSampling=100;
+ scenario='p'; //scenariusz utworzenia populacji poczatkowej: 'm'=migracje, 'p'=podzial
 
 Type stanosobnika=record
           NRsubpop:longint;
@@ -580,8 +581,18 @@ assign(INFOsample,concat('infodynSample',peText,'.txt'));
       Fis[i]:=0;
 
       {utworzenie populacji poczatkowej}
-     if zrodla[i]=0 then N0:=0 else N0:=round(0.1*Ne*polepow[i]);
-
+     if scenario='m' then //scenariusz: migracja
+      begin
+      if zrodla[i]=0 then N0:=0 else N0:=round(0.1*Ne*polepow[i]);
+      end;
+      
+     if scenario='p' then //scenariusz: podział
+      begin
+      N0:=round(0.1*Ne*polepow[i]);
+      end;
+     
+     if ((scenario<>'m') and (scenario<>'p')) then writeln('nieznany scenariusz');
+      
       for os:=1 to N0 do
         begin
         osob.NRsubpop:=i;
@@ -591,7 +602,8 @@ assign(INFOsample,concat('infodynSample',peText,'.txt'));
          begin
          for l:=0 to 1 do
           begin
-          osob.geny[j,l]:=allels0[zrodla[i],j].getLabel(random);
+           if scenario='m' then osob.geny[j,l]:=allels0[zrodla[i],j].getLabel(random);
+           if scenario='p' then osob.geny[j,l]:=allels0[(random(k0)+1),j].getLabel(random);
           allelsPop[i,j].add(osob.geny[j,l]);
           end;
          if osob.geny[j,0]<>osob.geny[j,1] then Ho[i]:=Ho[i]+1;
@@ -618,9 +630,9 @@ assign(INFOsample,concat('infodynSample',peText,'.txt'));
      avgAllelRichness[i]:=avgAllelRichness[i]/ngen;
      if N[i]<>0 then Ho[i]:=Ho[i]/(N[i]*ngen) else Ho[i]:=0;
      Nt:=Nt+N[i];
-     for j:=1 to ngen do totalAllelRichness:=totalAllelRichness+totalAllels[j].max;
-     totalAllelRichness:=totalAllelRichness/ngen;
      end;
+    for j:=1 to ngen do totalAllelRichness:=totalAllelRichness+totalAllels[j].max;
+    totalAllelRichness:=totalAllelRichness/ngen;
     avgPrivateAllels:=avgUnique(allelsPop); 
     He:=expectPopHeterozigosity(allelsPop,N);
     for j:=1 to ngen do Ht:=Ht+expectHeterozigosity(totalAllels[j],Nt);
@@ -664,7 +676,7 @@ assign(INFOsample,concat('infodynSample',peText,'.txt'));
     for i:=1 to k do write(INFO,Ho[i]:7:5,' ');
     for i:=1 to k do write(INFO,Fis[i]:7:5,' ');
     write(INFO,Fst:7:5,' ');  
-    write(INFO,totalAllelRichness:3:5);
+    write(INFO,totalAllelRichness:7:5,' ');
     for pairNumber:=1 to round(k*(k-1)/2) do write(INFO,PopPairFst[pairNumber]:7:5,' '); 
     writeln(INFO);
     ll:=0; //parametr przerywajacy symulacje, jesli ktoras z populacji jest zbyt liczna
@@ -684,13 +696,13 @@ assign(INFOsample,concat('infodynSample',peText,'.txt'));
      Fst:=1;
      totalAllelRichness:=0;
      for j:=1 to ngen do totalAllels[j].clear;
-      for i:=1 to k do
-       begin 
-       lmigr[i]:=0;
-       avgAllelRichness[i]:=0;
-       Ho[i]:=0;
-       for j:=1 to ngen do allelsPop[i,j].clear;
-       end;
+     for i:=1 to k do
+      begin 
+      lmigr[i]:=0;
+      avgAllelRichness[i]:=0;
+      Ho[i]:=0;
+      for j:=1 to ngen do allelsPop[i,j].clear;
+      end;
 
       {przegladanie populacji}
       for i:=1 to k do
@@ -859,7 +871,7 @@ assign(INFOsample,concat('infodynSample',peText,'.txt'));
       for i:=1 to k do write(INFO,Ho[i]:7:5,' ');
       for i:=1 to k do write(INFO,Fis[i]:7:5,' ');
       write(INFO,Fst:7:5,' ');
-      write(INFO,totalAllelRichness:3:5);
+      write(INFO,totalAllelRichness:7:5,' ');
       for pairNumber:=1 to round(k*(k-1)/2) do write(INFO,PopPairFst[pairNumber]:7:5,' '); 
       writeln(INFO);
       close(INFO);
